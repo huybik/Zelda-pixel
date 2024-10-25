@@ -7,6 +7,7 @@ from support import import_csv_layout, import_folder
 import random
 from weapon import Weapon
 from ui import UI
+from enemy import Enemy
 
 
 class Level:
@@ -26,6 +27,7 @@ class Level:
             "boundary": import_csv_layout("../map/map_FloorBlocks.csv"),
             "grass": import_csv_layout("../map/map_Grass.csv"),
             "object": import_csv_layout("../map/map_Objects.csv"),
+            "entities": import_csv_layout("../map/map_Entities.csv"),
         }
         graphics = {
             "grass": import_folder("../graphics/Grass"),
@@ -35,6 +37,7 @@ class Level:
         for sprite_type, layout in layouts.items():
             for row_index, row in enumerate(layout):
                 for col_index, col in enumerate(row):
+                    # col is value of map plan
                     if col != "-1":
                         x = col_index * TILESIZE
                         y = row_index * TILESIZE
@@ -58,10 +61,29 @@ class Level:
                                 sprite_type,
                                 surface,
                             )
+                        if sprite_type == "entities":
+                            if col == "394":  # 394 is player value on map plan
+                                self.player = Player(
+                                    (x, y),
+                                    [self.visible_sprites],
+                                    self.obstacle_sprites,
+                                )
+                            else:
+                                if col == "390":
+                                    monster_name = "bamboo"
+                                elif col == "391":
+                                    monster_name = "spirit"
+                                elif col == "392":
+                                    monster_name = "raccoon"
+                                else:
+                                    monster_name = "squid"
 
-        self.player = Player(
-            (2000, 1430), [self.visible_sprites], self.obstacle_sprites
-        )
+                                Enemy(
+                                    monster_name,
+                                    (x, y),
+                                    [self.visible_sprites],
+                                    self.obstacle_sprites,
+                                )
 
         # 1st approach to draw sprite
         # self.visible_sprites.add(Player((64,64)))
@@ -70,6 +92,7 @@ class Level:
         # Player((64,64), [self.visible_sprites])
 
         self.weapon = Weapon(self.player, [self.visible_sprites])
+        # self.magic =
 
     def run(self):
         # update and draw the game
