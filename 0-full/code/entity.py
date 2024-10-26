@@ -8,20 +8,24 @@ class Entity(pygame.sprite.Sprite):
 
         self.animation_speed = 0.15
         self.frame_index = 0
+        self.animations = {}
 
-    def move(self, speed):
+        self.main_path = ""
+
+        # movement
+        self.direction = pygame.math.Vector2()
+
+    def move(self):
         if self.direction.magnitude() != 0:
             self.direction = self.direction.normalize()
 
-        # detect collision before moving
-        self.hitbox.x += self.direction.x * speed
-        self.collision("horizontal")
-        self.hitbox.y += self.direction.y * speed
-        self.collision("vertical")
+            # detect collision before moving
+            self.hitbox.x += self.direction.x * self.speed
+            self.collision("horizontal")
+            self.hitbox.y += self.direction.y * self.speed
+            self.collision("vertical")
 
-        self.rect.center = self.hitbox.center
-
-        # weapon move
+            self.rect.center = self.hitbox.center
 
     def hitbox_collide(
         self, sprite1: pygame.sprite.Sprite, sprite2: pygame.sprite.Sprite
@@ -54,19 +58,19 @@ class Entity(pygame.sprite.Sprite):
             self.frame_index = 0
 
         # set the image
-        self.image = animation[int(self.frame_index)]  # normalize the float
+        self.image = animation[int(self.frame_index)]
 
-    def import_graphics(self, name):
+    def import_graphics(self, main_path, name, animations):
 
-        main_path = f"../graphics/monsters/{name}/"
+        main_path = f"{main_path}/{name}/"
         # get all frames into animation index
-        for status in self.animations.keys():
+        for status in animations.keys():
             surface_list = []
             path = main_path + status
             for _, _, img_files in walk(path):
                 for image in img_files:
                     full_path = path + "/" + image
-                    image_surf = pygame.image.load(full_path)
+                    image_surf = pygame.image.load(full_path).convert_alpha()
                     surface_list.append(image_surf)
 
-            self.animations[status] = surface_list
+            animations[status] = surface_list

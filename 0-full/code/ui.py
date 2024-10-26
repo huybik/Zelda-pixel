@@ -18,13 +18,13 @@ class UI:
         self.weapon_graphics = []
         for weapon in weapon_data.values():
             path = weapon["graphic"]
-            self.weapon_graphics.append(pygame.image.load(path))
+            self.weapon_graphics.append(pygame.image.load(path).convert_alpha())
 
         # convert weapon dictionary
         self.magic_graphics = []
         for magic in magic_data.values():
             path = magic["graphic"]
-            self.magic_graphics.append(pygame.image.load(path))
+            self.magic_graphics.append(pygame.image.load(path).convert_alpha())
 
     def show_bar(self, current_amount, max_amount, bg_rect: pygame.Rect, color):
         # draw bg and border

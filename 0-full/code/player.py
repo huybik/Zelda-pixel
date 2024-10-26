@@ -10,18 +10,32 @@ class Player(Entity):
         self, pos, groups: pygame.sprite.Group, obstacle_sprites: pygame.sprite.Group
     ):
         super().__init__(groups)
-        self.image = pygame.image.load("../graphics/test/player.png")
+        self.image = pygame.image.load("../graphics/test/player.png").convert_alpha()
         self.rect = self.image.get_rect(topleft=pos)
 
         self.hitbox = self.rect.inflate(-20, -26)
 
         # graphics setup˚“
-        self.import_player_assets()
         self.status = "down"
+        self.animations = {
+            "up": [],
+            "down": [],
+            "left": [],
+            "right": [],
+            "right_idle": [],
+            "left_idle": [],
+            "up_idle": [],
+            "down_idle": [],
+            "right_attack": [],
+            "left_attack": [],
+            "up_attack": [],
+            "down_attack": [],
+        }
+        path = "../graphics/"
+
+        self.import_graphics(path, "player", self.animations)
 
         # movement
-        self.direction = pygame.math.Vector2()
-        self.speed = 5  # move speed
         self.obstacle_sprites = obstacle_sprites
 
         # equipment general
@@ -49,27 +63,6 @@ class Player(Entity):
         self.energy = self.stats["energy"] * 0.8
         self.exp = 123
         self.speed = self.stats["speed"]
-
-    def import_player_assets(self):
-        character_path = "../graphics/player/"
-        self.animations = {
-            "up": [],
-            "down": [],
-            "left": [],
-            "right": [],
-            "right_idle": [],
-            "left_idle": [],
-            "up_idle": [],
-            "down_idle": [],
-            "right_attack": [],
-            "left_attack": [],
-            "up_attack": [],
-            "down_attack": [],
-        }
-
-        for animation in self.animations.keys():
-            fullpath = character_path + animation
-            self.animations[animation] = import_folder(fullpath)
 
     def input(self):
         keys = pygame.key.get_pressed()
@@ -117,7 +110,7 @@ class Player(Entity):
             style = list(magic_data.keys())[self.magic_index]
             strength = magic_data[style]["strength"] + self.stats["magic"]
             cost = magic_data[style]["cost"]
-            print("magic")
+            # print("magic")
 
         if keys[pygame.K_e] and self.can_switch_magic:
             self.can_switch_magic = False
@@ -163,5 +156,6 @@ class Player(Entity):
         self.cooldowns()
         self.get_status()
         self.animate()
-        self.move(self.speed)
-        debug(f"{self.status} {self.magic}")
+        self.move()
+        # debug(f"{self.status} {self.magic}")
+        pass

@@ -3,6 +3,7 @@ import sys
 from level import Level
 
 from settings import WIDTH, HEIGTH, TILESIZE, FPS
+from debug import debug
 
 
 class Game:
@@ -10,6 +11,8 @@ class Game:
 
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGTH))
+        pygame.display.set_caption("Zelda")
+
         self.clock = pygame.time.Clock()
 
         self.level = Level()
@@ -24,6 +27,8 @@ class Game:
             self.screen.fill("black")
 
             self.level.run()
+            fps = self.clock.get_fps()
+            debug(f"FPS: {fps:.2f}")
 
             pygame.display.update()
             self.clock.tick(60)

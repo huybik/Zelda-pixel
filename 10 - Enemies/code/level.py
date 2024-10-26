@@ -89,7 +89,9 @@ class Level:
                                 Enemy(
                                     monster_name,
                                     (x, y),
-                                    [self.visible_sprites],
+                                    [
+                                        self.visible_sprites,
+                                    ],
                                     self.obstacle_sprites,
                                 )
 

@@ -20,7 +20,7 @@ class Weapon(pygame.sprite.Sprite):
         if self.player.attacking:
             self.image = pygame.image.load(
                 f"{weapon_path}/{self.player.weapon}/{self.direction}.png"
-            )
+            ).convert_alpha()
 
             if self.direction == "right":
                 self.rect = self.image.get_rect(
@@ -40,7 +40,9 @@ class Weapon(pygame.sprite.Sprite):
                 )
         else:
             # self.image = pygame.image.load(f'{weapon_path}/{self.player.weapon}/full.png')
-            self.image = pygame.image.load(weapon_data[self.player.weapon]["graphic"])
+            self.image = pygame.image.load(
+                weapon_data[self.player.weapon]["graphic"]
+            ).convert_alpha()
 
             if self.direction == "left":
                 self.rect = self.image.get_rect(
