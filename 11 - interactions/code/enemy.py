@@ -62,7 +62,7 @@ class Enemy(Entity):
 		return (distance,direction)
 
 	def get_status(self, player):
-		distance = self.get_player_distance_direction(player)[0]
+		distance =  self.get_player_distance_direction(player)[0]
 
 		if distance <= self.attack_radius and self.can_attack:
 			if self.status != 'attack':

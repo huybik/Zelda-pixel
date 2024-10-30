@@ -1,5 +1,6 @@
 import pygame
 from os import walk
+from math import sin
 
 
 class Entity(pygame.sprite.Sprite):
@@ -15,9 +16,14 @@ class Entity(pygame.sprite.Sprite):
         # movement
         self.direction = pygame.math.Vector2()
 
+        # attack
+        self.first_attack = False
+        self.vulnerable = True
+
     def move(self):
         if self.direction.magnitude() != 0:
-            self.direction = self.direction.normalize()
+            if self.direction.magnitude() < 2:
+                self.direction = self.direction.normalize()
 
             # detect collision before moving
             self.hitbox.x += self.direction.x * self.speed
@@ -74,3 +80,10 @@ class Entity(pygame.sprite.Sprite):
                     surface_list.append(image_surf)
 
             animations[status] = surface_list
+
+    def wave_value(self):
+        value = sin(pygame.time.get_ticks())
+        if value >= 0:
+            return 255
+        else:
+            return 0

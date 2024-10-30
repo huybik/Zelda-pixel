@@ -3,6 +3,7 @@ from entity import Entity
 from support import import_folder
 from settings import monster_data
 from debug import debug
+from player import Player
 
 
 class Enemy(Entity):
@@ -38,10 +39,15 @@ class Enemy(Entity):
         self.notice_radius = monster_info["notice_radius"]
         self.attack_type = monster_info["attack_type"]
 
-        # player interactionho
+        # player interaction
         self.attack_time = 0
         self.attack_cooldown = 400
-        self.can_attack = False
+        self.can_attack = True
+
+        # invincibility timer
+        self.first_hit = False
+
+        # self.invincibility_duration = 300
 
     def get_player_distance_direction(self, player):
         enemy_vec = pygame.math.Vector2(self.rect.center)
@@ -72,7 +78,7 @@ class Enemy(Entity):
             self.attack_time = pygame.time.get_ticks()
         elif self.status == "move":
             _, self.direction = self.get_player_distance_direction(player)
-        else:
+        else:  # idle
             self.direction = pygame.math.Vector2()
 
     def cooldown(self):
@@ -91,16 +97,40 @@ class Enemy(Entity):
             self.frame_index = 0
         self.image = animation[int(self.frame_index)]
 
-    def update(self):
-        if self.status == "move":
-            self.move()
+    def get_damage(self, player: Player, attack_type):
+        if attack_type == "weapon" and not self.first_hit:
+            self.health -= player.damage
+        else:
+            # magic damage
             pass
+
+    def check_death(self):
+        if self.health <= 0:
+            self.kill()
+
+    # def hit_reaction(self, player: Player):
+    #     if self.first_hit:
+    #         self.direction *= -(player.knockback - self.resistance)
+
+    def update(self):
+        if self.status == "move":  # prevent enemy from moving when attacking
+            self.move()
+
         self.animate()
         self.cooldown()
+        self.check_death()
         # debug(f"{self.speed} {self.status}")
         pass
 
-    def enemy_update(self, player):
+    def enemy_update(self, player: Player):
+        # knockback
+        if self.first_hit:  # first hit timer depends on weapon cool down here
+            # move oposit direction
+            _, self.direction = self.get_player_distance_direction(player)
+            # increase direction magnitude
+            self.direction *= -(player.knockback - self.resistance) / 5
+            self.move()
+        # self.hit_reaction(player)
         self.get_status(player)
         self.actions(player)
         # debug(f"{self.direction}")

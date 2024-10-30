@@ -18,6 +18,10 @@ class Level:
         self.visible_sprites = YSortCameraGroup()
         self.obstacle_sprites = pygame.sprite.Group()
 
+        self.attack_sprites = pygame.sprite.Group()
+        self.attackable_sprites = pygame.sprite.Group()
+        self.enemies = []
+
         self.create_map()
 
         self.ui = UI()
@@ -49,7 +53,11 @@ class Level:
                             surface = random.choice(graphics[sprite_type])
                             Tile(
                                 (x, y),
-                                [self.visible_sprites, self.obstacle_sprites],
+                                [
+                                    self.visible_sprites,
+                                    self.obstacle_sprites,
+                                    self.attackable_sprites,
+                                ],
                                 sprite_type,
                                 surface,
                             )
@@ -65,7 +73,7 @@ class Level:
                             if col == "394":  # 394 is player value on map plan
                                 self.player = Player(
                                     (x, y),
-                                    [self.visible_sprites],
+                                    [self.visible_sprites, self.attackable_sprites],
                                     self.obstacle_sprites,
                                 )
                             else:
@@ -78,11 +86,17 @@ class Level:
                                 else:
                                     monster_name = "squid"
 
-                                Enemy(
-                                    monster_name,
-                                    (x, y),
-                                    [self.visible_sprites],
-                                    self.obstacle_sprites,
+                                self.enemies.append(
+                                    Enemy(
+                                        monster_name,
+                                        (x, y),
+                                        [
+                                            self.visible_sprites,
+                                            self.attack_sprites,
+                                            self.attackable_sprites,
+                                        ],
+                                        self.obstacle_sprites,
+                                    )
                                 )
 
         # 1st approach to draw sprite
@@ -91,15 +105,55 @@ class Level:
         # 2nd approach
         # Player((64,64), [self.visible_sprites])
 
-        self.weapon = Weapon(self.player, [self.visible_sprites])
+        self.weapon = Weapon(self.player, [self.visible_sprites, self.attack_sprites])
         # self.magic =
+
+    def player_attack_logic(self):
+        for attack_sprite in self.attack_sprites:
+            collision_sprites = pygame.sprite.spritecollide(
+                attack_sprite, self.attackable_sprites, dokill=False
+            )
+            if collision_sprites:
+                for target_sprite in collision_sprites:
+                    if attack_sprite.sprite_type == "weapon" and self.player.attacking:
+                        if target_sprite.sprite_type == "grass":
+                            target_sprite.kill()
+                        elif target_sprite.sprite_type == "enemy":
+                            target_sprite.get_damage(
+                                self.player, attack_sprite.sprite_type
+                            )
+                            target_sprite.first_hit = True
+                    if target_sprite.sprite_type == "player":
+                        # attack sprite can be weapon or enemy
+                        if attack_sprite.sprite_type == "enemy":
+                            if (
+                                attack_sprite.status == "attack"
+                                and attack_sprite.can_attack
+                                and self.player.vulnerable
+                            ):
+                                self.damage_player(
+                                    attack_sprite.attack_damage,
+                                    attack_sprite.attack_type,
+                                )
+
+        if not self.player.attacking:
+            for attackable_sprite in self.attackable_sprites:
+                if attackable_sprite.sprite_type == "enemy":
+                    attackable_sprite.first_hit = False
+
+    def damage_player(self, amount, attack_type):
+        self.player.vulnerable = False
+        self.player.vulnerable_time = pygame.time.get_ticks()
+        self.player.health -= amount
 
     def run(self):
         # update and draw the game
         self.visible_sprites.custom_draw(self.player)
         self.visible_sprites.update()
         self.visible_sprites.enemy_update(self.player)
+        self.player_attack_logic()
         self.ui.display(self.player)
+        debug(f"{self.player.vulnerable}")
 
 
 class YSortCameraGroup(pygame.sprite.Group):
@@ -132,6 +186,11 @@ class YSortCameraGroup(pygame.sprite.Group):
             offset_pos = sprite.rect.topleft - self.offset
 
             self.display_surface.blit(sprite.image, offset_pos)
+
+    def get_full_weapon_damage(self):
+        base_damage = self.stats["attack"]
+        weapon_damage = weapon_data[self.weapon]["damage"]
+        return base_damage + weapon_damage
 
     def enemy_update(self, player):
         enemy_sprites = [

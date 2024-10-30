@@ -30,6 +30,7 @@ weapon_data = {
         "cooldown": 100,
         "damage": 15,
         "graphic": "../graphics/weapons/sword/full.png",
+        # "knockback": 10,
     },
     "lance": {
         "cooldown": 400,
@@ -77,7 +78,7 @@ monster_data = {
         "attack_sound": "../audio/attack/slash.wav",
         "speed": 3,
         "resistance": 3,
-        "attack_radius": 80,
+        "attack_radius": 60,
         "notice_radius": 200,
     },
     "raccoon": {

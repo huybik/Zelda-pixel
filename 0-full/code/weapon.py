@@ -8,10 +8,11 @@ class Weapon(pygame.sprite.Sprite):
         super().__init__(groups)  # init group so it get drawn
         self.direction = player.status.split("_")[0]
         self.player = player
+        self.sprite_type = "weapon"
+        # init weapon
+        self.allign()
 
-        self.move()
-
-    def move(self):
+    def allign(self):
         weapon_path = "../graphics/weapons"
 
         self.direction = self.player.status.split("_")[0]
@@ -63,5 +64,5 @@ class Weapon(pygame.sprite.Sprite):
                 )
 
     def update(self):
-        self.move()
+        self.allign()
         pass

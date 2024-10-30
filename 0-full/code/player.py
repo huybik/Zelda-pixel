@@ -14,6 +14,7 @@ class Player(Entity):
         self.rect = self.image.get_rect(topleft=pos)
 
         self.hitbox = self.rect.inflate(-20, -26)
+        self.sprite_type = "player"
 
         # graphics setup˚“
         self.status = "down"
@@ -41,7 +42,6 @@ class Player(Entity):
         # equipment general
         self.switch_duration_cooldown = 200
 
-        # weapon
         self.weapon_index = 0
         self.weapon = list(weapon_data.keys())[self.weapon_index]
         self.attack_cooldown = 400
@@ -63,6 +63,15 @@ class Player(Entity):
         self.energy = self.stats["energy"] * 0.8
         self.exp = 123
         self.speed = self.stats["speed"]
+        self.knockback = weapon_data[self.weapon][
+            "damage"
+        ]  # just use damage as knockback
+        self.damage = self.get_full_weapon_damage()
+
+        # vulnerable
+        self.vulnerable = True
+        self.vulnerable_time = 0
+        self.vulnerable_cooldown = 2000
 
     def input(self):
         keys = pygame.key.get_pressed()
@@ -74,6 +83,7 @@ class Player(Entity):
         elif keys[pygame.K_LEFT]:
             self.direction.x = -1
             self.status = "left"
+        # weapon
         else:
             self.direction.x = 0
 
@@ -102,6 +112,9 @@ class Player(Entity):
                 self.weapon_index = 0
 
             self.weapon = list(weapon_data.keys())[self.weapon_index]
+            # set knockback
+            self.knockback = weapon_data[self.weapon]["damage"]
+            self.damage = self.get_full_weapon_damage()
 
         # magic
         if keys[pygame.K_LMETA]:
@@ -140,7 +153,10 @@ class Player(Entity):
     def cooldowns(self):
         current_time = pygame.time.get_ticks()
 
-        if current_time - self.attack_time > self.attack_cooldown:
+        if (
+            current_time - self.attack_time
+            > self.attack_cooldown + weapon_data[self.weapon]["cooldown"]
+        ):
             self.attacking = False
 
         if not self.can_switch_weapon:
@@ -150,12 +166,26 @@ class Player(Entity):
         if not self.can_switch_magic:
             if current_time - self.magic_switch_time >= self.switch_duration_cooldown:
                 self.can_switch_magic = True
+        if current_time - self.vulnerable_time > self.vulnerable_cooldown:
+            self.vulnerable = True
+
+    def flickering(self):
+        if not self.vulnerable:
+            self.image.set_alpha(self.wave_value())
+        else:
+            self.image.set_alpha(255)
+
+    def get_full_weapon_damage(self):
+        base_damage = self.stats["attack"]
+        weapon_damage = weapon_data[self.weapon]["damage"]
+        return base_damage + weapon_damage
 
     def update(self):
         self.input()
         self.cooldowns()
         self.get_status()
         self.animate()
+        self.flickering()
         self.move()
         # debug(f"{self.status} {self.magic}")
         pass
