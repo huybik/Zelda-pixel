@@ -17,8 +17,9 @@ class Weapon(pygame.sprite.Sprite):
 
         self.direction = self.player.status.split("_")[0]
 
-        # set weapon surf allign with player
-        if self.player.attacking:
+        if self.player.attacking and self.player.attack_type == "weapon":
+            # set weapon surf attack allign with player
+
             self.image = pygame.image.load(
                 f"{weapon_path}/{self.player.weapon}/{self.direction}.png"
             ).convert_alpha()
@@ -40,6 +41,7 @@ class Weapon(pygame.sprite.Sprite):
                     midbottom=self.player.rect.midtop + pygame.math.Vector2(-10, 0)
                 )
         else:
+            # weapon move with player
             # self.image = pygame.image.load(f'{weapon_path}/{self.player.weapon}/full.png')
             self.image = pygame.image.load(
                 weapon_data[self.player.weapon]["graphic"]

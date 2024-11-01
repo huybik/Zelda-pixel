@@ -4,10 +4,16 @@ from support import import_folder
 from settings import weapon_data, magic_data
 from entity import Entity
 
+# from level import Level
+
 
 class Player(Entity):
     def __init__(
-        self, pos, groups: pygame.sprite.Group, obstacle_sprites: pygame.sprite.Group
+        self,
+        pos,
+        groups: pygame.sprite.Group,
+        obstacle_sprites: pygame.sprite.Group,
+        create_magic,
     ):
         super().__init__(groups)
         self.image = pygame.image.load("../graphics/test/player.png").convert_alpha()
@@ -15,6 +21,7 @@ class Player(Entity):
 
         self.hitbox = self.rect.inflate(-20, -26)
         self.sprite_type = "player"
+        self.attack_type = None
 
         # graphics setup˚“
         self.status = "down"
@@ -34,6 +41,7 @@ class Player(Entity):
         }
         path = "../graphics/"
 
+        self.create_magic = create_magic
         self.import_graphics(path, "player", self.animations)
 
         # movement
@@ -96,10 +104,14 @@ class Player(Entity):
         else:
             self.direction.y = 0
 
+        if self.direction.magnitude() > 0:
+            self.facing = self.direction.normalize()
+
         # attack
         if keys[pygame.K_SPACE] and not self.attacking:
             self.attacking = True
             self.attack_time = pygame.time.get_ticks()
+            self.attack_type = "weapon"
             print("attack")
 
         if keys[pygame.K_q] and self.can_switch_weapon:
@@ -117,13 +129,17 @@ class Player(Entity):
             self.damage = self.get_full_weapon_damage()
 
         # magic
-        if keys[pygame.K_LMETA]:
+        if keys[pygame.K_LMETA] and not self.attacking:
             self.attacking = True
             self.attack_time = pygame.time.get_ticks()
+            self.attack_type = "magic"
             style = list(magic_data.keys())[self.magic_index]
-            strength = magic_data[style]["strength"] + self.stats["magic"]
+            strength = self.get_full_magic_damage()
             cost = magic_data[style]["cost"]
-            # print("magic")
+
+            # create magic sprites
+            self.create_magic(style, strength, cost)
+            print("magic")
 
         if keys[pygame.K_e] and self.can_switch_magic:
             self.can_switch_magic = False
@@ -180,6 +196,17 @@ class Player(Entity):
         weapon_damage = weapon_data[self.weapon]["damage"]
         return base_damage + weapon_damage
 
+    def get_full_magic_damage(self):
+        base_damage = self.stats["magic"]
+        spell_damage = magic_data[self.magic]["strength"]
+        return base_damage + spell_damage
+
+    def energy_recovery(self):
+        if self.energy < self.stats["energy"]:
+            self.energy += 0.01 * self.stats["magic"]
+        else:
+            self.energy = self.stats["energy"]
+
     def update(self):
         self.input()
         self.cooldowns()
@@ -187,5 +214,6 @@ class Player(Entity):
         self.animate()
         self.flickering()
         self.move()
+        self.energy_recovery()
         # debug(f"{self.status} {self.magic}")
         pass

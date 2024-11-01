@@ -15,6 +15,7 @@ class Entity(pygame.sprite.Sprite):
 
         # movement
         self.direction = pygame.math.Vector2()
+        self.facing = pygame.math.Vector2()
 
         # attack
         self.first_attack = False

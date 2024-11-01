@@ -8,6 +8,9 @@ import random
 from weapon import Weapon
 from ui import UI
 from enemy import Enemy
+from entity import Entity
+from particles import AnimationPlayer
+from magic import MagicPlayer
 
 
 class Level:
@@ -21,6 +24,9 @@ class Level:
         self.attack_sprites = pygame.sprite.Group()
         self.attackable_sprites = pygame.sprite.Group()
         self.enemies = []
+
+        self.animation_player = AnimationPlayer()
+        self.magic_player = MagicPlayer(self.animation_player)
 
         self.create_map()
 
@@ -75,6 +81,7 @@ class Level:
                                     (x, y),
                                     [self.visible_sprites, self.attackable_sprites],
                                     self.obstacle_sprites,
+                                    self.create_magic,
                                 )
                             else:
                                 if col == "390":
@@ -96,6 +103,8 @@ class Level:
                                             self.attackable_sprites,
                                         ],
                                         self.obstacle_sprites,
+                                        self.trigger_death_particles,
+                                        self.add_exp,
                                     )
                                 )
 
@@ -108,22 +117,36 @@ class Level:
         self.weapon = Weapon(self.player, [self.visible_sprites, self.attack_sprites])
         # self.magic =
 
-    def player_attack_logic(self):
+    def collision(self):
+        # TODO: refactor this to not handle the logic
         for attack_sprite in self.attack_sprites:
-            collision_sprites = pygame.sprite.spritecollide(
+            collision_sprites: list[Entity] = pygame.sprite.spritecollide(
                 attack_sprite, self.attackable_sprites, dokill=False
             )
             if collision_sprites:
                 for target_sprite in collision_sprites:
-                    if attack_sprite.sprite_type == "weapon" and self.player.attacking:
+                    if self.player.attacking:
                         if target_sprite.sprite_type == "grass":
                             target_sprite.kill()
+
+                            # particles
+                            pos = target_sprite.rect.center
+                            offset = pygame.math.Vector2((0, 50))
+                            for leaf in range(random.randint(2, 5)):
+                                self.animation_player.create_grass_particles(
+                                    pos - offset, [self.visible_sprites]
+                                )
+
                         elif target_sprite.sprite_type == "enemy":
-                            target_sprite.get_damage(
-                                self.player, attack_sprite.sprite_type
-                            )
-                            target_sprite.first_hit = True
+                            # check if attack come from player
+                            if attack_sprite.sprite_type != "enemy":
+                                target_sprite.get_damage(
+                                    self.player, attack_sprite.sprite_type
+                                )
+
                     if target_sprite.sprite_type == "player":
+                        target_sprite: Player
+                        attack_sprite: Enemy
                         # attack sprite can be weapon or enemy
                         if attack_sprite.sprite_type == "enemy":
                             if (
@@ -146,12 +169,31 @@ class Level:
         self.player.vulnerable_time = pygame.time.get_ticks()
         self.player.health -= amount
 
+        # particles
+        pos = self.player.rect.center
+        self.animation_player.create_particles(attack_type, pos, [self.visible_sprites])
+
+    def trigger_death_particles(self, particle_type, pos):
+
+        self.animation_player.create_particles(particle_type, pos, self.visible_sprites)
+
+    def create_magic(self, style, strength, cost):
+        if style == "heal":
+            self.magic_player.heal(self.player, strength, cost, [self.visible_sprites])
+        if style == "flame":
+            self.magic_player.flame(
+                self.player, strength, cost, [self.visible_sprites, self.attack_sprites]
+            )
+
+    def add_exp(self, amount):
+        self.player.exp += amount
+
     def run(self):
         # update and draw the game
         self.visible_sprites.custom_draw(self.player)
         self.visible_sprites.update()
         self.visible_sprites.enemy_update(self.player)
-        self.player_attack_logic()
+        self.collision()
         self.ui.display(self.player)
         debug(f"{self.player.vulnerable}")
 

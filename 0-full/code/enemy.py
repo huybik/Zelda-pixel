@@ -8,11 +8,21 @@ from player import Player
 
 class Enemy(Entity):
 
-    def __init__(self, monster_name, pos, groups, obstacle_sprites):
+    def __init__(
+        self,
+        monster_name,
+        pos,
+        groups,
+        obstacle_sprites,
+        trigger_death_particles,
+        add_exp,
+    ):
 
         # general setup
         super().__init__(groups)
         self.sprite_type = "enemy"
+        self.trigger_death_particles = trigger_death_particles
+        self.add_exp = add_exp
 
         # graphic setup
         path = "../graphics/monsters/"
@@ -99,14 +109,18 @@ class Enemy(Entity):
 
     def get_damage(self, player: Player, attack_type):
         if attack_type == "weapon" and not self.first_hit:
-            self.health -= player.damage
-        else:
+            self.health -= player.get_full_weapon_damage()
+        elif attack_type == "magic" and not self.first_hit:
+            self.health -= player.get_full_magic_damage()
             # magic damage
-            pass
+        self.first_hit = True
 
-    def check_death(self):
+    def check_death(self):  # this should be inside enemy
         if self.health <= 0:
+
             self.kill()
+            self.trigger_death_particles(self.monster_name, self.rect.center)
+            self.add_exp(self.exp)
 
     # def hit_reaction(self, player: Player):
     #     if self.first_hit:
