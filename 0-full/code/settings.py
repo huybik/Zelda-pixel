@@ -12,6 +12,8 @@ ITEM_BOX_SIZE = 80
 UI_FONT = "../graphics/font/joystix.ttf"
 UI_FONT_SIZE = 18
 
+HITBOX_OFFSET = {"player": -26, "object": -40, "grass": -10, "invisible": 0}
+
 # general colors
 WATER_COLOR = "#71ddee"
 UI_BG_COLOR = "#222222"
@@ -23,6 +25,11 @@ HEALTH_COLOR = "red"
 ENERGY_COLOR = "blue"
 UI_BORDER_COLOR_ACTIVE = "gold"
 
+# upgrade menu
+TEXT_COLOR_SELECTED = "#111111"
+BAR_COLOR = "#EEEEEE"
+BAR_COLOR_SELECTED = "#111111"
+UPGRADE_BG_COLOR_SELECTED = "#EEEEEE"
 
 # weapons
 weapon_data = {
@@ -79,7 +86,7 @@ monster_data = {
         "speed": 3,
         "resistance": 3,
         "attack_radius": 60,
-        "notice_radius": 200,
+        "notice_radius": 300,
     },
     "raccoon": {
         "health": 300,
@@ -90,7 +97,7 @@ monster_data = {
         "speed": 2,
         "resistance": 3,
         "attack_radius": 120,
-        "notice_radius": 250,
+        "notice_radius": 450,
     },
     "spirit": {
         "health": 100,
@@ -101,7 +108,7 @@ monster_data = {
         "speed": 4,
         "resistance": 3,
         "attack_radius": 60,
-        "notice_radius": 200,
+        "notice_radius": 300,
     },
     "bamboo": {
         "health": 70,
@@ -112,6 +119,6 @@ monster_data = {
         "speed": 3,
         "resistance": 3,
         "attack_radius": 50,
-        "notice_radius": 200,
+        "notice_radius": 300,
     },
 }

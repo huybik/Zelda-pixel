@@ -3,6 +3,7 @@ from debug import debug
 from support import import_folder
 from settings import weapon_data, magic_data
 from entity import Entity
+from settings import HITBOX_OFFSET
 
 # from level import Level
 
@@ -19,7 +20,7 @@ class Player(Entity):
         self.image = pygame.image.load("../graphics/test/player.png").convert_alpha()
         self.rect = self.image.get_rect(topleft=pos)
 
-        self.hitbox = self.rect.inflate(-20, -26)
+        self.hitbox = self.rect.inflate(-6, HITBOX_OFFSET["player"])
         self.sprite_type = "player"
         self.attack_type = None
 
@@ -67,10 +68,24 @@ class Player(Entity):
 
         # stats
         self.stats = {"health": 100, "energy": 60, "attack": 10, "magic": 4, "speed": 5}
+        self.max_stats = {
+            "health": 300,
+            "energy": 140,
+            "attack": 20,
+            "magic": 10,
+            "speed": 10,
+        }
+        self.upgrade_cost = {
+            "health": 100,
+            "energy": 100,
+            "attack": 100,
+            "magic": 100,
+            "speed": 100,
+        }
         self.health = self.stats["health"] * 0.5
         self.energy = self.stats["energy"] * 0.8
-        self.exp = 123
-        self.speed = self.stats["speed"]
+        self.exp = 500
+        # self.speed = self.stats["speed"]
         self.knockback = weapon_data[self.weapon][
             "damage"
         ]  # just use damage as knockback
@@ -80,6 +95,10 @@ class Player(Entity):
         self.vulnerable = True
         self.vulnerable_time = 0
         self.vulnerable_cooldown = 2000
+
+        # import sound
+        self.weapon_attack_sound = pygame.mixer.Sound("../audio/sword.wav")
+        self.weapon_attack_sound.set_volume(0.3)
 
     def input(self):
         keys = pygame.key.get_pressed()
@@ -109,6 +128,7 @@ class Player(Entity):
 
         # attack
         if keys[pygame.K_SPACE] and not self.attacking:
+            self.weapon_attack_sound.play()
             self.attacking = True
             self.attack_time = pygame.time.get_ticks()
             self.attack_type = "weapon"
@@ -201,6 +221,12 @@ class Player(Entity):
         spell_damage = magic_data[self.magic]["strength"]
         return base_damage + spell_damage
 
+    def get_value_by_index(self, index):
+        return list(self.stats.values())[index]
+
+    def get_cost_by_index(self, index):
+        return list(self.upgrade_cost.values())[index]
+
     def energy_recovery(self):
         if self.energy < self.stats["energy"]:
             self.energy += 0.01 * self.stats["magic"]
@@ -213,7 +239,7 @@ class Player(Entity):
         self.get_status()
         self.animate()
         self.flickering()
-        self.move()
+        self.move(self.stats["speed"])
         self.energy_recovery()
         # debug(f"{self.status} {self.magic}")
         pass

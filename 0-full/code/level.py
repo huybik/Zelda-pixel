@@ -11,12 +11,14 @@ from enemy import Enemy
 from entity import Entity
 from particles import AnimationPlayer
 from magic import MagicPlayer
+from upgrade import Upgrade
 
 
 class Level:
     def __init__(self) -> None:
         # get the display surface
         self.display_surface = pygame.display.get_surface()
+        self.game_paused = False
 
         self.visible_sprites = YSortCameraGroup()
         self.obstacle_sprites = pygame.sprite.Group()
@@ -25,12 +27,17 @@ class Level:
         self.attackable_sprites = pygame.sprite.Group()
         self.enemies = []
 
+        # sprite setup
+        # self.player created in create_map
+        self.create_map()
+
+        # particles
         self.animation_player = AnimationPlayer()
         self.magic_player = MagicPlayer(self.animation_player)
 
-        self.create_map()
-
+        # user interface
         self.ui = UI()
+        self.upgrade = Upgrade(self.player)
 
     def create_map(self):
         layouts = {
@@ -53,7 +60,7 @@ class Level:
                         y = row_index * TILESIZE
                         if sprite_type == "boundary":
                             Tile(
-                                (x, y), self.obstacle_sprites, sprite_type
+                                (x, y), self.obstacle_sprites, sprite_type="invisible"
                             )  # use default empty surfade
                         if sprite_type == "grass":
                             surface = random.choice(graphics[sprite_type])
@@ -99,6 +106,7 @@ class Level:
                                         (x, y),
                                         [
                                             self.visible_sprites,
+                                            # self.obstacle_sprites,
                                             self.attack_sprites,
                                             self.attackable_sprites,
                                         ],
@@ -173,6 +181,11 @@ class Level:
         pos = self.player.rect.center
         self.animation_player.create_particles(attack_type, pos, [self.visible_sprites])
 
+        if self.player.health < 0:
+            self.trigger_death_particles("player", self.player.rect.center)
+            
+            self.player.kill()
+
     def trigger_death_particles(self, particle_type, pos):
 
         self.animation_player.create_particles(particle_type, pos, self.visible_sprites)
@@ -188,14 +201,21 @@ class Level:
     def add_exp(self, amount):
         self.player.exp += amount
 
+    def toggle_menu(self):
+        self.game_paused = not self.game_paused
+
     def run(self):
-        # update and draw the game
         self.visible_sprites.custom_draw(self.player)
-        self.visible_sprites.update()
-        self.visible_sprites.enemy_update(self.player)
-        self.collision()
         self.ui.display(self.player)
-        debug(f"{self.player.vulnerable}")
+
+        if self.game_paused:
+            # self.upgrade.display()
+            self.upgrade.display()
+        else:
+            # update and draw the game
+            self.visible_sprites.update()
+            self.visible_sprites.enemy_update(self.player)
+            self.collision()
 
 
 class YSortCameraGroup(pygame.sprite.Group):
@@ -228,11 +248,6 @@ class YSortCameraGroup(pygame.sprite.Group):
             offset_pos = sprite.rect.topleft - self.offset
 
             self.display_surface.blit(sprite.image, offset_pos)
-
-    def get_full_weapon_damage(self):
-        base_damage = self.stats["attack"]
-        weapon_damage = weapon_data[self.weapon]["damage"]
-        return base_damage + weapon_damage
 
     def enemy_update(self, player):
         enemy_sprites = [

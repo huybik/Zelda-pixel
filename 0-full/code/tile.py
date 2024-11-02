@@ -1,5 +1,5 @@
 import pygame
-from settings import TILESIZE
+from settings import TILESIZE, HITBOX_OFFSET
 
 
 class Tile(pygame.sprite.Sprite):
@@ -14,8 +14,7 @@ class Tile(pygame.sprite.Sprite):
         if sprite_type == "object":
             # minus object size
             self.rect = self.image.get_rect(topleft=(pos[0], pos[1] - TILESIZE))
-        else:
+            self.hitbox = self.rect.inflate(0, HITBOX_OFFSET["object"])
+        else:  # invisible and grass
             self.rect = self.image.get_rect(topleft=pos)
-
-        # define hitbox
-        self.hitbox = self.rect.inflate(0, -40)
+            self.hitbox = self.rect.inflate(0, HITBOX_OFFSET[sprite_type])

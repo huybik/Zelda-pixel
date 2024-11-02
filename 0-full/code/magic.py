@@ -8,9 +8,14 @@ from random import randint
 class MagicPlayer:
     def __init__(self, animation_player: AnimationPlayer):
         self.animation_player = animation_player
+        self.sounds = {
+            "heal": pygame.mixer.Sound("../audio/heal.wav"),
+            "flame": pygame.mixer.Sound("../audio/Fire.wav"),
+        }
 
     def heal(self, player: Player, strength, cost, groups):
         if player.energy >= cost:
+            self.sounds["heal"].play()
             player.health += strength
             player.energy -= cost
             if player.health >= player.stats["health"]:
@@ -21,7 +26,7 @@ class MagicPlayer:
     def flame(self, player: Player, strength, cost, groups):
         if player.energy >= cost:
             # create 6 flames
-
+            self.sounds["flame"].play()
             for i in range(1, 12):
                 # direction dictate  where player looking e.g. (0,1) for /right
                 offset = i * randint(0, TILESIZE)

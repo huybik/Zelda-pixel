@@ -2,7 +2,7 @@ import pygame
 import sys
 from level import Level
 
-from settings import WIDTH, HEIGTH, TILESIZE, FPS
+from settings import WIDTH, HEIGTH, FPS, WATER_COLOR
 from debug import debug
 
 from pygame.locals import *
@@ -20,6 +20,11 @@ class Game:
 
         self.level = Level()
 
+        # sound
+        main_sound = pygame.mixer.Sound("../audio/main.ogg")
+        main_sound.set_volume(0.5)
+        main_sound.play(loops=-1)
+
     def run(self):
         while True:
             for event in pygame.event.get():
@@ -27,14 +32,17 @@ class Game:
                     pygame.quit()
                     sys.exit()
 
-            self.screen.fill("black")
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_m:
+                        self.level.toggle_menu()
 
+            self.screen.fill(WATER_COLOR)
             self.level.run()
             fps = self.clock.get_fps()
-            # debug(f"FPS: {fps:.2f}")
+            debug(f"FPS: {fps:.2f}")
 
             pygame.display.update()
-            self.clock.tick(60)
+            self.clock.tick(FPS)
 
 
 if __name__ == "__main__":
