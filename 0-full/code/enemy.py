@@ -3,7 +3,6 @@ from entity import Entity
 from support import import_folder
 from settings import monster_data, HITBOX_OFFSET
 from debug import debug
-from player import Player
 
 
 class Enemy(Entity):
@@ -86,17 +85,17 @@ class Enemy(Entity):
 
         if distance <= self.attack_radius and self.can_attack:
             if self.status != "attack":
-                self.frame_index = 0
-                self.attack_sound.play()
-            self.status = "attack"
+                self.status = "attack"
         elif distance > self.attack_radius and distance <= self.notice_radius:
             self.status = "move"
         else:
             self.status = "idle"
 
     def actions(self, player):
-        if self.status == "attack":
+        if self.status == "attack" and self.can_attack:
             self.attack_time = pygame.time.get_ticks()
+            self.attack_sound.play()
+            # self.can_attack = False
         elif self.status == "move":
             _, self.direction = self.get_player_distance_direction(player)
         else:  # idle
@@ -111,21 +110,22 @@ class Enemy(Entity):
 
     def animate(self):
         animation = self.animations[self.status]
+
         self.frame_index += self.animation_speed
         if self.frame_index >= len(animation):
-            if self.status == "attack":
-                self.can_attack = False
             self.frame_index = 0
         self.image = animation[int(self.frame_index)]
 
-    def get_damage(self, player: Player, attack_type):
-        self.hit_sound.play()
-        if attack_type == "weapon" and not self.first_hit:
-            self.health -= player.get_full_weapon_damage()
-        elif attack_type == "magic" and not self.first_hit:
-            self.health -= player.get_full_magic_damage()
-            # magic damage
-        self.first_hit = True
+    def get_damage(self, player):
+        if not self.first_hit:
+            self.hit_sound.play()
+            attack_type = player.attack_type
+            if attack_type == "weapon" and not self.first_hit:
+                self.health -= player.get_full_weapon_damage()
+            elif attack_type == "magic" and not self.first_hit:
+                self.health -= player.get_full_magic_damage()
+                # magic damage
+            self.first_hit = True
 
     def check_death(self):  # this should be inside enemy
         if self.health <= 0:
@@ -149,7 +149,7 @@ class Enemy(Entity):
         # debug(f"{self.speed} {self.status}")
         pass
 
-    def enemy_update(self, player: Player):
+    def enemy_update(self, player):
         # knockback
         if self.first_hit:  # first hit timer depends on weapon cool down here
             # move oposit direction

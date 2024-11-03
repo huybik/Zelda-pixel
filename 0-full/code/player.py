@@ -4,6 +4,8 @@ from support import import_folder
 from settings import weapon_data, magic_data
 from entity import Entity
 from settings import HITBOX_OFFSET
+from enemy import Enemy
+
 
 # from level import Level
 
@@ -99,6 +101,7 @@ class Player(Entity):
         # import sound
         self.weapon_attack_sound = pygame.mixer.Sound("../audio/sword.wav")
         self.weapon_attack_sound.set_volume(0.3)
+        self.player_death_sound = pygame.mixer.Sound("../audio/death.wav")
 
     def input(self):
         keys = pygame.key.get_pressed()

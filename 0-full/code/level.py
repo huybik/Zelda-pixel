@@ -62,7 +62,7 @@ class Level:
                             Tile(
                                 (x, y), self.obstacle_sprites, sprite_type="invisible"
                             )  # use default empty surfade
-                        if sprite_type == "grass":
+                        elif sprite_type == "grass":
                             surface = random.choice(graphics[sprite_type])
                             Tile(
                                 (x, y),
@@ -74,7 +74,7 @@ class Level:
                                 sprite_type,
                                 surface,
                             )
-                        if sprite_type == "object":
+                        elif sprite_type == "object":
                             surface = graphics[sprite_type][int(col)]
                             Tile(
                                 (x, y),
@@ -146,14 +146,12 @@ class Level:
                                 )
 
                         elif target_sprite.sprite_type == "enemy":
+                            target_sprite: Enemy
                             # check if attack come from player
                             if attack_sprite.sprite_type != "enemy":
-                                target_sprite.get_damage(
-                                    self.player, attack_sprite.sprite_type
-                                )
+                                target_sprite.get_damage(self.player)
 
                     if target_sprite.sprite_type == "player":
-                        target_sprite: Player
                         attack_sprite: Enemy
                         # attack sprite can be weapon or enemy
                         if attack_sprite.sprite_type == "enemy":
@@ -183,7 +181,7 @@ class Level:
 
         if self.player.health < 0:
             self.trigger_death_particles("player", self.player.rect.center)
-            
+            self.player.player_death_sound.play()
             self.player.kill()
 
     def trigger_death_particles(self, particle_type, pos):
