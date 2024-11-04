@@ -26,8 +26,6 @@ class UI:
             path = magic["graphic"]
             self.magic_graphics.append(pygame.image.load(path).convert_alpha())
 
-        self.text_bubble = TextBubble()
-
     def show_bar(self, current_amount, max_amount, bg_rect: pygame.Rect, color):
         # draw bg and border
         pygame.draw.rect(self.display_surface, UI_BG_COLOR, bg_rect)
@@ -94,83 +92,3 @@ class UI:
 
         self.weapon_overlay(player.weapon_index, not player.can_switch_weapon)
         self.magic_overlay(player.magic_index, not player.can_switch_magic)
-
-
-class TextBubble:
-    def __init__(self, font_size=16):
-        self.display_surface = pygame.display.get_surface()
-        self.font = pygame.font.Font(UI_FONT, font_size)
-        self.padding = 10
-        self.border_width = 2
-        self.tail_height = 10
-        self.max_width = 200  # Maximum width before text wrapping
-
-    def _wrap_text(self, text, max_width):
-        """Split text into lines that fit within max_width."""
-        words = text.split()
-        lines = []
-        current_line = []
-
-        for word in words:
-            test_line = " ".join(current_line + [word])
-            test_surface = self.font.render(test_line, True, TEXT_COLOR)
-
-            if test_surface.get_width() <= max_width:
-                current_line.append(word)
-            else:
-                if current_line:
-                    lines.append(" ".join(current_line))
-                current_line = [word]
-
-        if current_line:
-            lines.append(" ".join(current_line))
-
-        return lines
-
-    def draw(self, text, target_rect, offset_y=30):
-        # Wrap text if needed
-        lines = self._wrap_text(text, self.max_width)
-
-        # Calculate bubble dimensions
-        line_surfaces = [self.font.render(line, True, TEXT_COLOR) for line in lines]
-        line_heights = [surf.get_height() for surf in line_surfaces]
-        max_line_width = max(surf.get_width() for surf in line_surfaces)
-
-        # Calculate bubble size
-        bubble_width = max_line_width + (self.padding * 2)
-        bubble_height = sum(line_heights) + (self.padding * 2)
-
-        # Calculate bubble position (centered above target)
-        bubble_x = target_rect.centerx - (bubble_width // 2)
-        bubble_y = target_rect.top - bubble_height - self.tail_height - offset_y
-
-        # Draw bubble background
-        bubble_rect = pygame.Rect(bubble_x, bubble_y, bubble_width, bubble_height)
-        pygame.draw.rect(
-            self.display_surface, UI_BG_COLOR, bubble_rect, border_radius=8
-        )
-        pygame.draw.rect(
-            self.display_surface,
-            UI_BORDER_COLOR,
-            bubble_rect,
-            width=self.border_width,
-            border_radius=8,
-        )
-
-        # Draw tail
-        tail_points = [
-            (target_rect.centerx, bubble_rect.bottom),
-            (target_rect.centerx - 10, bubble_rect.bottom - self.tail_height),
-            (target_rect.centerx + 10, bubble_rect.bottom - self.tail_height),
-        ]
-        pygame.draw.polygon(self.display_surface, UI_BG_COLOR, tail_points)
-        pygame.draw.polygon(
-            self.display_surface, UI_BORDER_COLOR, tail_points, width=self.border_width
-        )
-
-        # Draw text
-        current_y = bubble_y + self.padding
-        for surface in line_surfaces:
-            text_rect = surface.get_rect(centerx=bubble_rect.centerx, top=current_y)
-            self.display_surface.blit(surface, text_rect)
-            current_y += surface.get_height()

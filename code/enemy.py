@@ -4,6 +4,10 @@ from settings import monster_data
 from debug import debug
 import time
 import asyncio
+from boubble import TextBubble
+
+
+# from ui import UI
 
 
 class Enemy(Entity):
@@ -51,8 +55,7 @@ class Enemy(Entity):
         self.attack_radius = monster_info["attack_radius"]
         self.notice_radius = monster_info["notice_radius"]
         self.attack_type = monster_info["attack_type"]
-        self.hostile = monster_info["hostile"]
-        # self.attack_sound = monster_info["attack_sound"]
+        self.characteristic = monster_info["characteristic"]
 
         # player interaction
         self.attack_time = 0
@@ -76,11 +79,14 @@ class Enemy(Entity):
         self.chat_api = chat_api
         self.last_chat_time = 0
         self.chat_interval = 3  # seconds
+        self.reason = None
 
         self.movement_task = None
         self.current_direction = pygame.math.Vector2()
 
         self.attackable = "False"
+
+        self.text_bubble = TextBubble([groups[0]])  # Add to visible sprites group
 
     def get_player_distance_direction(self, player):
         enemy_vec = pygame.math.Vector2(self.rect.center)
@@ -114,6 +120,9 @@ class Enemy(Entity):
             self.attack_time = pygame.time.get_ticks()
             self.attack_sound.play()
             self.can_attack = False
+            return True
+        else:
+            return False
 
     def get_damage(self, player):
         if not self.first_hit:
@@ -145,9 +154,11 @@ class Enemy(Entity):
             f"Entity is at position {self.rect.center} and player is at {player.rect.center}."
             f"Entity distance and direction to player: {distance}, {direction}."
             f"Entity can attack if distance less than {self.attack_radius}. "
-            f"Entity is hostile:{self.hostile}. "
-            'Respond next move for the entity with either "attack": "yes/no" to attack or "move: "x,y" where x,y is the direction vector to move. Example response: {"attack": "yes"} or {"move": "134,-23"}'
+            f"Entity is {self.characteristic}. "
+            'Response next move for the entity with either "attack": "yes/no" and "move: "x,y" where x,y is the direction vector to move. Then response for the move with "reason":"detail" in less than 4 words'
+            'Example response: {"attack": "no", "move": "134,-23", "reason":"I\'m running away"}'
         )
+        print(f"prompt: {prompt}")
 
         try:
             response = await asyncio.wait_for(
@@ -156,27 +167,23 @@ class Enemy(Entity):
             )
             print(f"response: {response}")
 
-            self.parse_decision_response(response)
+            self.parse_decision(response)
 
         except (asyncio.TimeoutError, Exception) as e:
             print(f"Error getting movement decision: {e}")
             # Keep the current direction on error
 
-    def parse_decision_response(self, response):
+    def parse_decision(self, response):
         try:
             import json
 
             data = json.loads(response)
 
             # Check for attack decision
-            if "attack" in data:
-                # Expect format: {'attack': 'yes'} or {'attack': 'no'}
-                if data["attack"].lower() == "yes":
-                    self.status = "attack"
 
-            # Check for move decision
-            elif "move" in data:
-                # Expect format: {'move': '123,145'}
+            if data["attack"].lower() == "yes":
+                self.status = "attack"
+            else:
                 coords = data["move"].split(",")
                 if len(coords) != 2:
                     raise ValueError("Move coordinates must be in format 'x,y'")
@@ -189,10 +196,8 @@ class Enemy(Entity):
                     vector = vector.normalize()
                 self.direction = vector
                 self.status = "move"
-            else:
-                print(
-                    "Invalid response format - must contain 'attack' or 'move' or 'idle'"
-                )
+
+            self.reason = data["reason"]
 
         except (json.JSONDecodeError, ValueError, AttributeError, KeyError) as e:
             print(f"Error parsing decision response: {e}")
@@ -206,7 +211,12 @@ class Enemy(Entity):
         self.animate()
         self.cooldown()
         self.check_death()
-        # debug(f"{self.speed} {self.status}")
+
+        # Update text bubble position and text
+        if self.reason:
+            self.text_bubble.update_text(self.reason, self.rect)
+        else:
+            self.text_bubble.update_text("", self.rect)
 
     def enemy_update(self, player):
         # self.get_status(player)
@@ -238,4 +248,6 @@ class Enemy(Entity):
                     )
                 self.last_chat_time = current_time
 
-        debug(f"{self.direction, self.status, self.attackable}")
+        # In UI.display() or wherever you want to show the bubble:
+        # self.ui.text_bubble.draw("Hello, I am an enemy!", self.rect)
+        debug(f"{self.direction, self.status, self.attackable, self.reason}")

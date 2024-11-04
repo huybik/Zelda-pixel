@@ -13,9 +13,8 @@ from particles import AnimationPlayer
 from magic import MagicPlayer
 from upgrade import Upgrade
 from game_state import export_game_state  # Import the export function
-import asyncio
 from persona import API  # Import the API class
-
+from camera import YSortCameraGroup
 
 # import pygame_asyncio  # You'll need to install this package
 
@@ -35,16 +34,20 @@ class Level:
 
         # persona
         self.chat_api = API()
+
+        # user interface
+        self.ui = UI()
+        # self.text_bubble = TextBubble()
+
         # sprite setup
         self.create_map()
+
+        # pause menu
+        self.upgrade = Upgrade(self.player)
 
         # particles
         self.animation_player = AnimationPlayer()
         self.magic_player = MagicPlayer(self.animation_player)
-
-        # user interface
-        self.ui = UI()
-        self.upgrade = Upgrade(self.player)
 
         self.export_key = pygame.K_s  # Define the key to export game state
 
@@ -165,13 +168,11 @@ class Level:
                         attack_sprite: Enemy
                         # attack sprite can be weapon or enemy
                         if attack_sprite.sprite_type == "enemy":
-                            if (
-                                attack_sprite.status == "attack"
-                                and attack_sprite.can_attack
-                                and self.player.vulnerable
-                            ):
+
+                            damage = attack_sprite.attack()
+                            if damage:
                                 self.damage_player(
-                                    attack_sprite.attack_damage,
+                                    damage,
                                     attack_sprite.attack_type,
                                 )
 
@@ -181,18 +182,21 @@ class Level:
                     attackable_sprite.first_hit = False
 
     def damage_player(self, amount, attack_type):
-        self.player.vulnerable = False
-        self.player.vulnerable_time = pygame.time.get_ticks()
-        self.player.health -= amount
+        if self.player.vulnerable:
+            self.player.vulnerable = False
+            self.player.vulnerable_time = pygame.time.get_ticks()
+            self.player.health -= amount
 
-        # particles
-        pos = self.player.rect.center
-        self.animation_player.create_particles(attack_type, pos, [self.visible_sprites])
+            # particles
+            pos = self.player.rect.center
+            self.animation_player.create_particles(
+                attack_type, pos, [self.visible_sprites]
+            )
 
-        if self.player.health < 0:
-            self.trigger_death_particles("player", self.player.rect.center)
-            self.player.player_death_sound.play()
-            # self.player.kill()
+            if self.player.health < 0:
+                self.trigger_death_particles("player", self.player.rect.center)
+                self.player.player_death_sound.play()
+                # self.player.kill()
 
     def trigger_death_particles(self, particle_type, pos):
 
@@ -227,48 +231,3 @@ class Level:
             self.visible_sprites.update()
             await self.visible_sprites.enemy_update(self.player)
             self.collision()
-
-
-class YSortCameraGroup(pygame.sprite.Group):
-    def __init__(self):
-        super().__init__()
-
-        # general setup
-        self.display_surface = pygame.display.get_surface()
-        self.half_width = self.display_surface.get_size()[0] // 2
-        self.half_height = self.display_surface.get_size()[1] // 2
-
-        self.offset = pygame.math.Vector2()
-
-        # creating the floor, must load first before other things
-        self.floor_surf = pygame.image.load("../graphics/tilemap/ground.png").convert()
-        self.floor_rect = self.floor_surf.get_rect(topleft=(0, 0))
-
-    def custom_draw(self, player: pygame.sprite.Sprite):
-        # offset for camera to middle of player
-        self.offset.x = player.rect.centerx - self.half_width
-        self.offset.y = player.rect.centery - self.half_height
-
-        # sort which sprite to display first by y axis -> obstacle above player # is drawn first and obstruct player, or is obstructed if player below
-        self.display_surface.blit(
-            self.floor_surf, -self.offset
-        )  # because floor rect already at 0 0, dont need floor rect - offset
-
-        # self.sprites are all sprite in current sprite group
-        for sprite in sorted(self.sprites(), key=lambda sprite: sprite.rect.y):
-            offset_pos = sprite.rect.topleft - self.offset
-            # offset_pos = sprite.rect.topleft
-
-            self.display_surface.blit(sprite.image, offset_pos)
-
-    async def enemy_update(self, player):
-        enemy_sprites = [
-            sprite
-            for sprite in self.sprites()
-            if hasattr(sprite, "sprite_type") and sprite.sprite_type == "enemy"
-        ]
-
-        for enemy in enemy_sprites:
-            enemy.enemy_update(player)
-        # Use asyncio.gather to run all enemy updates concurrently
-        await asyncio.gather(*[enemy.enemy_decision(player) for enemy in enemy_sprites])

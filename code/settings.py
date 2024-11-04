@@ -87,7 +87,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 60,
         "notice_radius": 300,
-        "hostile": "yes",
+        "characteristic": "friendly to player",
     },
     "raccoon": {
         "health": 300,
@@ -99,7 +99,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 120,
         "notice_radius": 450,
-        "hostile": "yes",
+        "characteristic": "hostile to player",
     },
     "spirit": {
         "health": 100,
@@ -111,7 +111,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 60,
         "notice_radius": 300,
-        "hostile": "yes",
+        "characteristic": "hostile to player",
     },
     "bamboo": {
         "health": 70,
@@ -123,6 +123,6 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 50,
         "notice_radius": 300,
-        "hostile": "no",
+        "characteristic": "hostile to player",
     },
 }

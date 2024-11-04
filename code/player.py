@@ -4,7 +4,8 @@ from support import import_folder
 from settings import weapon_data, magic_data
 from entity import Entity
 from settings import HITBOX_OFFSET
-from enemy import Enemy
+
+# from enemy import Enemy
 
 
 # from level import Level
@@ -152,7 +153,7 @@ class Player(Entity):
             self.damage = self.get_full_weapon_damage()
 
         # magic
-        if keys[pygame.K_LMETA] and not self.attacking:
+        if keys[pygame.K_r] and not self.attacking:
             self.attacking = True
             self.attack_time = pygame.time.get_ticks()
             self.attack_type = "magic"
