@@ -8,12 +8,13 @@ class API:
         self.model = "gpt-4o-mini"  # Using GPT-4 Mini model
         self.messages = []
         self.client = None  # Add client property
+        self.load_api_key()
 
     def get_response(self, user_input, system_prompt=None):
         if system_prompt and not self.messages:
             # Add system prompt at the start of conversation
             self.messages.append({"role": "system", "content": system_prompt})
-            
+
         self.messages.append({"role": "user", "content": user_input})
 
         try:
@@ -22,6 +23,7 @@ class API:
             )
             ai_response = response.choices[0].message.content
             self.messages.append({"role": "assistant", "content": ai_response})
+
             return ai_response
 
         except Exception as e:
@@ -43,5 +45,4 @@ class API:
 
 if __name__ == "__main__":
     persona = API()
-    persona.load_api_key()
     print(persona.get_response("Hello, how are you?"))

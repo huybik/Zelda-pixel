@@ -12,6 +12,12 @@ from entity import Entity
 from particles import AnimationPlayer
 from magic import MagicPlayer
 from upgrade import Upgrade
+from game_state import export_game_state  # Import the export function
+import asyncio
+from persona import API  # Import the API class
+
+
+# import pygame_asyncio  # You'll need to install this package
 
 
 class Level:
@@ -27,8 +33,9 @@ class Level:
         self.attackable_sprites = pygame.sprite.Group()
         self.enemies = []
 
+        # persona
+        self.chat_api = API()
         # sprite setup
-        # self.player created in create_map
         self.create_map()
 
         # particles
@@ -38,6 +45,8 @@ class Level:
         # user interface
         self.ui = UI()
         self.upgrade = Upgrade(self.player)
+
+        self.export_key = pygame.K_s  # Define the key to export game state
 
     def create_map(self):
         layouts = {
@@ -60,7 +69,7 @@ class Level:
                         y = row_index * TILESIZE
                         if sprite_type == "boundary":
                             Tile(
-                                (x, y), self.obstacle_sprites, sprite_type="invisible"
+                                (x, y), self.obstacle_sprites, sprite_type="boundary"
                             )  # use default empty surfade
                         elif sprite_type == "grass":
                             surface = random.choice(graphics[sprite_type])
@@ -113,6 +122,7 @@ class Level:
                                         self.obstacle_sprites,
                                         self.trigger_death_particles,
                                         self.add_exp,
+                                        self.chat_api,
                                     )
                                 )
 
@@ -182,7 +192,7 @@ class Level:
         if self.player.health < 0:
             self.trigger_death_particles("player", self.player.rect.center)
             self.player.player_death_sound.play()
-            self.player.kill()
+            # self.player.kill()
 
     def trigger_death_particles(self, particle_type, pos):
 
@@ -202,17 +212,20 @@ class Level:
     def toggle_menu(self):
         self.game_paused = not self.game_paused
 
-    def run(self):
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == self.export_key:
+                export_game_state(self)
+
+    async def run(self):
         self.visible_sprites.custom_draw(self.player)
         self.ui.display(self.player)
 
         if self.game_paused:
-            # self.upgrade.display()
             self.upgrade.display()
         else:
-            # update and draw the game
             self.visible_sprites.update()
-            self.visible_sprites.enemy_update(self.player)
+            await self.visible_sprites.enemy_update(self.player)
             self.collision()
 
 
@@ -244,10 +257,11 @@ class YSortCameraGroup(pygame.sprite.Group):
         # self.sprites are all sprite in current sprite group
         for sprite in sorted(self.sprites(), key=lambda sprite: sprite.rect.y):
             offset_pos = sprite.rect.topleft - self.offset
+            # offset_pos = sprite.rect.topleft
 
             self.display_surface.blit(sprite.image, offset_pos)
 
-    def enemy_update(self, player):
+    async def enemy_update(self, player):
         enemy_sprites = [
             sprite
             for sprite in self.sprites()
@@ -256,3 +270,5 @@ class YSortCameraGroup(pygame.sprite.Group):
 
         for enemy in enemy_sprites:
             enemy.enemy_update(player)
+        # Use asyncio.gather to run all enemy updates concurrently
+        await asyncio.gather(*[enemy.enemy_decision(player) for enemy in enemy_sprites])

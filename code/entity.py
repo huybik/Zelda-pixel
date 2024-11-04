@@ -25,7 +25,7 @@ class Entity(pygame.sprite.Sprite):
         if self.direction.magnitude() != 0:
             if self.direction.magnitude() < 2:  # this to ignore knockback magnitude
                 self.direction = self.direction.normalize()
-
+ 
             # detect collision before moving
             self.hitbox.x += self.direction.x * speed
             self.collision("horizontal")

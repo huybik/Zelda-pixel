@@ -12,7 +12,7 @@ ITEM_BOX_SIZE = 80
 UI_FONT = "../graphics/font/joystix.ttf"
 UI_FONT_SIZE = 18
 
-HITBOX_OFFSET = {"player": -26, "object": -40, "grass": -10, "invisible": 0}
+HITBOX_OFFSET = {"player": -26, "object": -40, "grass": -10, "boundary": 0}
 
 # general colors
 WATER_COLOR = "#71ddee"
@@ -87,6 +87,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 60,
         "notice_radius": 300,
+        "hostile": "yes",
     },
     "raccoon": {
         "health": 300,
@@ -98,6 +99,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 120,
         "notice_radius": 450,
+        "hostile": "yes",
     },
     "spirit": {
         "health": 100,
@@ -109,6 +111,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 60,
         "notice_radius": 300,
+        "hostile": "yes",
     },
     "bamboo": {
         "health": 70,
@@ -120,5 +123,6 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 50,
         "notice_radius": 300,
+        "hostile": "no",
     },
 }
