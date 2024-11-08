@@ -6,12 +6,13 @@ import time
 from boubble import TextBubble
 import json
 import asyncio
+from persona import Persona
+from memstream import MemoryStream
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from persona import Persona
-    from memstream import MemoryStream
+# from typing import TYPE_CHECKING
+# if TYPE_CHECKING:
+#     from persona import Persona
+#     from memstream import MemoryStream
 
 # from ui import UI
 
@@ -26,8 +27,6 @@ class Enemy(Entity):
         obstacle_sprites,
         trigger_death_particles,
         add_exp,
-        persona: "Persona",
-        memory: "MemoryStream",
         monster_id,
         damage_player,
     ):
@@ -39,6 +38,8 @@ class Enemy(Entity):
         self.add_exp = add_exp
         self.damage_player = damage_player
         self.groups = groups
+        self.memory = MemoryStream()
+        self.persona = Persona()
 
         # graphic setup
         path = "../graphics/monsters/"
@@ -90,10 +91,7 @@ class Enemy(Entity):
 
         # self.invincibility_duration = 300
 
-        # ChatGPT API
-        self.persona = persona
-        self.memory = memory
-
+        # ChatGPT API params
         self.last_chat_time = 0
         self.last_summary_time = 0
 
@@ -180,7 +178,7 @@ class Enemy(Entity):
 
             self.target = pygame.math.Vector2(x, y)
 
-            self.reason = data["reason"]
+            self.reason = self.monster_id + ":" + data["reason"]
             self.want_to_attack = data["attack"].lower() == "yes"
 
         except (json.JSONDecodeError, ValueError, AttributeError, KeyError) as e:
@@ -198,54 +196,55 @@ class Enemy(Entity):
             if distance < 3:
                 return
 
-            # Try moving with obstacle avoidance
-            next_pos = pygame.math.Vector2(self.hitbox.centerx, self.hitbox.centery)
-            next_pos.x += self.direction.x * speed
-            next_pos.y += self.direction.y * speed
+            # Look ahead several steps to find best path
+            best_direction = self.direction
+            least_collisions = float("inf")
+            prediction_steps = 5  # Number of steps to look ahead
 
-            # Check for potential collisions
-            test_rect = self.hitbox.copy()
-            test_rect.center = next_pos
+            # Test main direction and alternates
+            possible_directions = [
+                self.direction,
+                pygame.math.Vector2(self.direction.y, -self.direction.x),
+                pygame.math.Vector2(-self.direction.y, self.direction.x),
+                pygame.math.Vector2(-self.direction.y, -self.direction.x),
+            ]
 
-            will_collide = False
-            for sprite in self.obstacle_sprites:
-                if test_rect.colliderect(sprite.hitbox):
-                    will_collide = True
-                    break
+            for test_direction in possible_directions:
+                collisions = 0
+                test_rect = self.hitbox.copy()
 
-            if will_collide:
-                # Try alternate directions
-                alternate_directions = [
-                    pygame.math.Vector2(
-                        self.direction.y, -self.direction.x
-                    ),  # Try right
-                    pygame.math.Vector2(
-                        -self.direction.y, self.direction.x
-                    ),  # Try left
-                ]
+                # Predict multiple steps ahead
+                for step in range(prediction_steps):
+                    next_pos = pygame.math.Vector2(test_rect.centerx, test_rect.centery)
+                    next_pos.x += test_direction.x * speed
+                    next_pos.y += test_direction.y * speed
+                    test_rect.center = next_pos
 
-                for alt_dir in alternate_directions:
-                    test_rect = self.hitbox.copy()
-                    test_rect.x += alt_dir.x * speed
-                    test_rect.y += alt_dir.y * speed
-
-                    can_move = True
-                    for sprite in self.obstacle_sprites:
-                        if test_rect.colliderect(sprite.hitbox):
-                            can_move = False
-                            break
-
-                    if can_move:
-                        self.direction = alt_dir
+                    if self.check_collision(test_rect):
+                        collisions += 1
                         break
 
-            # Apply movement
-            self.hitbox.x += self.direction.x * speed
-            self.collision("horizontal")
-            self.hitbox.y += self.direction.y * speed
-            self.collision("vertical")
+                # Choose direction with least predicted collisions
+                if collisions < least_collisions:
+                    least_collisions = collisions
+                    best_direction = test_direction
+
+            # Use the best found direction
+            self.direction = best_direction
 
             self.rect.center = self.hitbox.center
+
+        # Apply movement
+        self.hitbox.x += self.direction.x * speed
+        self.collision("horizontal")
+        self.hitbox.y += self.direction.y * speed
+        self.collision("vertical")
+
+    def check_collision(self, test_rect):
+        for sprite in self.obstacle_sprites:
+            if test_rect.colliderect(sprite.hitbox):
+                return True
+        return False
 
     def attack(self, player):
         # Execute attack if decided
@@ -276,10 +275,11 @@ class Enemy(Entity):
         if self.persona.decision != self.current_decision:
             self.current_decision = self.persona.decision
             self.parse_decision(self.current_decision)
-            if distance <= self.attack_radius and self.want_to_attack:
-                self.attack(player)
-            else:
-                self.status = "move"
+
+        if distance <= self.attack_radius and self.want_to_attack:
+            self.attack(player)
+        else:
+            self.status = "move"
 
     def update(self):
         # main update for sprite
@@ -295,6 +295,7 @@ class Enemy(Entity):
 
         # knockback
         if self.first_hit:
+            distance, self.direction = self.get_player_distance_direction(player)
             self.direction *= -(player.knockback - self.resistance) / 5
             self.move(None, self.speed)
 

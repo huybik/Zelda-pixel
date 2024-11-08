@@ -12,8 +12,6 @@ from entity import Entity
 from particles import AnimationPlayer
 from magic import MagicPlayer
 from upgrade import Upgrade
-from persona import Persona  # Import the API class
-from memstream import MemoryStream
 from camera import YSortCameraGroup
 
 # import pygame_asyncio  # You'll need to install this package
@@ -32,9 +30,6 @@ class Level:
         self.attackable_sprites = pygame.sprite.Group()
         self.enemies = []
 
-        # persona
-        self.persona = Persona()
-        self.memory = MemoryStream()
         # user interface
         self.ui = UI()
         # self.text_bubble = TextBubble()
@@ -109,7 +104,7 @@ class Level:
                                     monster_name = "raccoon"
                                 elif col == "393":
                                     monster_name = "squid"
-                                monster_id = f"{col_index}-{row_index}"
+                                monster_id = f"{col_index}{row_index}"
                                 self.enemies.append(
                                     Enemy(
                                         monster_name,
@@ -123,8 +118,6 @@ class Level:
                                         self.obstacle_sprites,
                                         self.trigger_death_particles,
                                         self.add_exp,
-                                        self.persona,
-                                        self.memory,
                                         monster_id,
                                         self.damage_player,
                                     )
