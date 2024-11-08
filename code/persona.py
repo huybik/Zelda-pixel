@@ -75,7 +75,7 @@ class Persona:
         prompt = (
             f"You are {entity.characteristic}. "
             f"Using current 'observation' about you and the player, and your 'memory' to decide what to do next. "
-            f'Decide your next location with "location":"x,y" and if you should attack the player with "attack":"yes/no" and your reason for moving in less than 5 words with "reason":"your reason". If you want to attack the player you should move to the player location.'
+            f'Decide your next location with "location":"x,y" and if you should attack the player with "attack":"yes/no" and your reason for moving in less than 5 words with "reason":"your reason". If you want to attack the player you should move to random location around the player.'
             'Output format: {"move": "x,y", "attack": "yes/no", "reason": "your reason"}\n'
             f"'Observation': {observation}\n"
             f"'Memory': {memory}\n"

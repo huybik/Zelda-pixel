@@ -78,6 +78,7 @@ magic_data = {
 # enemy
 monster_data = {
     "squid": {
+        "id": 393,
         "health": 100,
         "exp": 100,
         "damage": 20,
@@ -86,10 +87,11 @@ monster_data = {
         "speed": 3,
         "resistance": 3,
         "attack_radius": 60,
-        "notice_radius": 300,
+        "notice_radius": 600,
         "characteristic": "friendly to player",
     },
     "raccoon": {
+        "id": 392,
         "health": 300,
         "exp": 250,
         "damage": 40,
@@ -98,10 +100,11 @@ monster_data = {
         "speed": 2,
         "resistance": 3,
         "attack_radius": 120,
-        "notice_radius": 450,
+        "notice_radius": 600,
         "characteristic": "wise to what player did",
     },
     "spirit": {
+        "id": 391,
         "health": 100,
         "exp": 110,
         "damage": 8,
@@ -110,10 +113,11 @@ monster_data = {
         "speed": 4,
         "resistance": 3,
         "attack_radius": 60,
-        "notice_radius": 300,
+        "notice_radius": 600,
         "characteristic": "afraid of player",
     },
     "bamboo": {
+        "id": 390,
         "health": 70,
         "exp": 120,
         "damage": 6,
@@ -122,7 +126,7 @@ monster_data = {
         "speed": 3,
         "resistance": 3,
         "attack_radius": 50,
-        "notice_radius": 300,
+        "notice_radius": 600,
         "characteristic": "hostile to player",
     },
 }

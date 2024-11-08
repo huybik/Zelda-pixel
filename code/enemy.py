@@ -197,14 +197,55 @@ class Enemy(Entity):
                 self.direction = self.direction.normalize()
             if distance < 3:
                 return
-            # if self.direction.magnitude() < 2:  # this to ignore knockback magnitude
-        # detect collision before moving
-        self.hitbox.x += self.direction.x * speed
-        self.collision("horizontal")
-        self.hitbox.y += self.direction.y * speed
-        self.collision("vertical")
 
-        self.rect.center = self.hitbox.center
+            # Try moving with obstacle avoidance
+            next_pos = pygame.math.Vector2(self.hitbox.centerx, self.hitbox.centery)
+            next_pos.x += self.direction.x * speed
+            next_pos.y += self.direction.y * speed
+
+            # Check for potential collisions
+            test_rect = self.hitbox.copy()
+            test_rect.center = next_pos
+
+            will_collide = False
+            for sprite in self.obstacle_sprites:
+                if test_rect.colliderect(sprite.hitbox):
+                    will_collide = True
+                    break
+
+            if will_collide:
+                # Try alternate directions
+                alternate_directions = [
+                    pygame.math.Vector2(
+                        self.direction.y, -self.direction.x
+                    ),  # Try right
+                    pygame.math.Vector2(
+                        -self.direction.y, self.direction.x
+                    ),  # Try left
+                ]
+
+                for alt_dir in alternate_directions:
+                    test_rect = self.hitbox.copy()
+                    test_rect.x += alt_dir.x * speed
+                    test_rect.y += alt_dir.y * speed
+
+                    can_move = True
+                    for sprite in self.obstacle_sprites:
+                        if test_rect.colliderect(sprite.hitbox):
+                            can_move = False
+                            break
+
+                    if can_move:
+                        self.direction = alt_dir
+                        break
+
+            # Apply movement
+            self.hitbox.x += self.direction.x * speed
+            self.collision("horizontal")
+            self.hitbox.y += self.direction.y * speed
+            self.collision("vertical")
+
+            self.rect.center = self.hitbox.center
 
     def attack(self, player):
         # Execute attack if decided

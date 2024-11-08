@@ -107,7 +107,7 @@ class Level:
                                     monster_name = "spirit"
                                 elif col == "392":
                                     monster_name = "raccoon"
-                                else:
+                                elif col == "393":
                                     monster_name = "squid"
                                 monster_id = f"{col_index}-{row_index}"
                                 self.enemies.append(
