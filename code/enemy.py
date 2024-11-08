@@ -8,11 +8,14 @@ import json
 import asyncio
 from persona import Persona
 from memstream import MemoryStream
+from support import get_distance_direction, wave_value
 
-# from typing import TYPE_CHECKING
-# if TYPE_CHECKING:
-#     from persona import Persona
-#     from memstream import MemoryStream
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from entity import Entity
+    from tile import Tile
+    from player import Player
 
 # from ui import UI
 
@@ -52,7 +55,6 @@ class Enemy(Entity):
         self.rect = self.image.get_rect(topleft=pos)
 
         # movement
-        # self.hitbox = self.rect.inflate(0, HITBOX_OFFSET["enemy"])
         self.hitbox = self.rect
         self.obstacle_sprites = obstacle_sprites
         self.target = pygame.math.Vector2()
@@ -72,14 +74,7 @@ class Enemy(Entity):
         self.characteristic = monster_info["characteristic"]
         self.monster_id = monster_id
 
-        # player interaction
-        self.attack_time = 0
-        self.attack_cooldown = 2000
-        self.can_attack = True
         self.want_to_attack = False
-
-        # invincibility timer
-        self.first_hit = False
 
         # sounds
         self.death_sound = pygame.mixer.Sound("../audio/death.wav")
@@ -89,8 +84,6 @@ class Enemy(Entity):
         self.hit_sound.set_volume(0.6)
         self.attack_sound.set_volume(0.6)
 
-        # self.invincibility_duration = 300
-
         # ChatGPT API params
         self.last_chat_time = 0
         self.last_summary_time = 0
@@ -99,34 +92,35 @@ class Enemy(Entity):
         self.summary_interval = 10  # seconds
         self.reason = None
 
-        self.event_log_interval = 1000  # miliseconds
-        self.last_event_log_time = 0
-
         self.decision_task = None
         self.summary_task = None
 
         self.current_decision = None
 
-        # store decision and summary
+        # cooldowns
+        self.observation_time = 0
+        self.observation_cooldown = 1000
+        self.can_save_observation = True
 
-    def get_player_distance_direction(self, player):
-        enemy_vec = pygame.math.Vector2(self.rect.center)
-        player_vec = pygame.math.Vector2(player.rect.center)
+        self.vulnerable = True
+        self.vulnerable_time = 0
+        self.vulnerable_duration = 400
 
-        distance = (player_vec - enemy_vec).magnitude()
-        if distance > 0:
-            direction = (player_vec - enemy_vec).normalize()
-        else:
-            direction = pygame.math.Vector2()
-
-        return distance, direction
+        self.attack_time = 0
+        self.attack_cooldown = 2000
+        self.can_attack = True
 
     def cooldown(self):
         # this cooldown to prevent attack animation spam
+        current_time = pygame.time.get_ticks()
+
         if not self.can_attack:
-            current_time = pygame.time.get_ticks()
             if current_time - self.attack_time >= self.attack_cooldown:
                 self.can_attack = True
+        if current_time - self.observation_time >= self.observation_cooldown:
+            self.can_save_observation = True
+        if current_time - self.vulnerable_time >= self.vulnerable_duration:
+            self.vulnerable = True
 
     def animate(self):
         animation = self.animations[self.status]
@@ -142,28 +136,31 @@ class Enemy(Entity):
     def get_damage(self, player):
         # log memory
 
-        if not self.first_hit:
+        if self.vulnerable:
             self.hit_sound.play()
             attack_type = player.attack_type
-            if attack_type == "weapon" and not self.first_hit:
+            if attack_type == "weapon":
                 self.health -= player.get_full_weapon_damage()
-            elif attack_type == "magic" and not self.first_hit:
+            elif attack_type == "magic":
                 self.health -= player.get_full_magic_damage()
                 # magic damage
-            self.first_hit = True
-            # save attacked event
-            self.memory.log_memory(self, player)
+
+            # set vulnerable to false
+            self.vulnerable = False
+            self.vulnerable_time = pygame.time.get_ticks()
 
         if self.health <= 0:
             self.status = "death"
             # save death event
-            self.memory.log_memory(self, player)
 
             self.kill()
             self.text_bubble.kill()
             self.trigger_death_particles(self.monster_name, self.rect.center)
             self.add_exp(self.exp)
             self.death_sound.play()
+
+        # save attacked event
+        self.can_save_observation = True
 
     def parse_decision(self, response):
         try:
@@ -246,7 +243,7 @@ class Enemy(Entity):
                 return True
         return False
 
-    def attack(self, player):
+    def attack(self):
         # Execute attack if decided
         # can attack will end after attack animation
         # can attack will be set to true after cooldow
@@ -255,31 +252,39 @@ class Enemy(Entity):
             self.attack_time = pygame.time.get_ticks()
             self.attack_sound.play()
             self.damage_player(self.attack_damage, self.attack_type)
+            self.can_save_observation = True
 
-    def interaction(self, player, distance):
+    def flickering(self):
+        if not self.vulnerable:
+            self.image.set_alpha(wave_value())
+        else:
+            self.image.set_alpha(255)
+
+    def interaction(
+        self, player: "Player", entities: list["Entity"], objects: list["Tile"]
+    ):
+
         if not self.text_bubble:
             self.text_bubble = TextBubble([self.groups[0]])
 
         if self.reason:
             self.text_bubble.update_text(self.reason, self.rect)
 
-        any_key_pressed = any(pygame.key.get_pressed())
-        current_time = pygame.time.get_ticks()
-        if (
-            current_time - self.last_event_log_time >= self.event_log_interval
-            and any_key_pressed
-        ):
-            self.memory.log_memory(self, player)
-            self.last_event_log_time = current_time
-
         if self.persona.decision != self.current_decision:
             self.current_decision = self.persona.decision
             self.parse_decision(self.current_decision)
 
+        distance, _ = get_distance_direction(self, player)
         if distance <= self.attack_radius and self.want_to_attack:
-            self.attack(player)
+            self.attack()
         else:
             self.status = "move"
+
+        any_key_pressed = any(pygame.key.get_pressed())
+        if self.can_save_observation and any_key_pressed:
+            self.memory.save_observation(self, player, entities, objects)
+            self.observation_time = pygame.time.get_ticks()
+            self.can_save_observation = False
 
     def update(self):
         # main update for sprite
@@ -288,17 +293,17 @@ class Enemy(Entity):
 
         self.animate()
         self.cooldown()
+        self.flickering()
 
-    def enemy_update(self, player):
-        # self.get_status(player)
-        distance, _ = self.get_player_distance_direction(player)
-
+    def enemy_update(
+        self, player: "Player", entities: list["Entity"], objects: list["Tile"]
+    ):
+        distance, _ = get_distance_direction(self, player)
         # knockback
-        if self.first_hit:
-            distance, self.direction = self.get_player_distance_direction(player)
+        if not self.vulnerable:
+            _, self.direction = get_distance_direction(self, player)
             self.direction *= -(player.knockback - self.resistance) / 5
             self.move(None, self.speed)
-
         if distance > self.notice_radius:
             self.status = "idle"
             self.direction = pygame.math.Vector2()
@@ -308,11 +313,11 @@ class Enemy(Entity):
                 self.text_bubble = None
 
         else:
-            self.interaction(player, distance)
+            self.interaction(player, entities, objects)
 
-    async def enemy_decision(self, player):
+    async def enemy_decision(self, player, entities, objects):
         try:
-            distance, _ = self.get_player_distance_direction(player)
+            distance, _ = get_distance_direction(self, player)
             current_time = time.time()
 
             if distance <= self.notice_radius:
@@ -321,7 +326,9 @@ class Enemy(Entity):
                     if self.decision_task is None or self.decision_task.done():
                         self.decision_task = asyncio.create_task(
                             asyncio.wait_for(
-                                self.persona.fetch_decision(self, player),
+                                self.persona.fetch_decision(
+                                    self, player, entities, objects
+                                ),
                                 timeout=5.0,
                             )
                         )

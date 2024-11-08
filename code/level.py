@@ -28,7 +28,8 @@ class Level:
 
         self.attack_sprites = pygame.sprite.Group()
         self.attackable_sprites = pygame.sprite.Group()
-        self.enemies = []
+        self.entities = []
+        self.objects = []
 
         # user interface
         self.ui = UI()
@@ -81,11 +82,13 @@ class Level:
                             )
                         elif sprite_type == "object":
                             surface = graphics[sprite_type][int(col)]
-                            Tile(
-                                (x, y),
-                                [self.visible_sprites, self.obstacle_sprites],
-                                sprite_type,
-                                surface,
+                            self.objects.append(
+                                Tile(
+                                    (x, y),
+                                    [self.visible_sprites, self.obstacle_sprites],
+                                    sprite_type,
+                                    surface,
+                                )
                             )
                         if sprite_type == "entities":
                             if col == "394":  # 394 is player value on map plan
@@ -105,7 +108,7 @@ class Level:
                                 elif col == "393":
                                     monster_name = "squid"
                                 monster_id = f"{col_index}{row_index}"
-                                self.enemies.append(
+                                self.entities.append(
                                     Enemy(
                                         monster_name,
                                         (x, y),
@@ -154,26 +157,9 @@ class Level:
 
                         elif target_sprite.sprite_type == "enemy":
                             target_sprite: Enemy
-                            # check if attack come from player
-                            if attack_sprite.sprite_type != "enemy":
+                            # check if attack come from player weapon
+                            if attack_sprite.sprite_type == "weapon":
                                 target_sprite.get_damage(self.player)
-
-                    # if target_sprite.sprite_type == "player":
-                    #     attack_sprite: Enemy
-                    #     # attack sprite can be weapon or enemy
-                    #     if attack_sprite.sprite_type == "enemy":
-
-                    #         damage = attack_sprite.attack()
-                    #         if damage:
-                    #             self.damage_player(
-                    #                 damage,
-                    #                 attack_sprite.attack_type,
-                    #             )
-
-        if not self.player.attacking:
-            for attackable_sprite in self.attackable_sprites:
-                if attackable_sprite.sprite_type == "enemy":
-                    attackable_sprite.first_hit = False
 
     def damage_player(self, amount, attack_type):
         if self.player.vulnerable:
@@ -218,5 +204,7 @@ class Level:
             self.upgrade.display()
         else:
             self.visible_sprites.update()
-            await self.visible_sprites.enemy_update(self.player)
+            await self.visible_sprites.enemy_update(
+                self.player, self.entities, self.objects
+            )
             self.collision()

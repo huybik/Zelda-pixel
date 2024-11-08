@@ -1,6 +1,7 @@
 from csv import reader
 from os import walk
 import pygame
+from math import sin
 
 
 def import_csv_layout(path):
@@ -23,3 +24,24 @@ def import_folder(path):
             surface_list.append(image_surf)
 
     return surface_list
+
+
+def get_distance_direction(A: pygame.sprite.Sprite, B: pygame.sprite.Sprite):
+    enemy_vec = pygame.math.Vector2(A.rect.center)
+    player_vec = pygame.math.Vector2(B.rect.center)
+
+    distance = (player_vec - enemy_vec).magnitude()
+    if distance > 0:
+        direction = (player_vec - enemy_vec).normalize()
+    else:
+        direction = pygame.math.Vector2()
+
+    return distance, direction
+
+
+def wave_value():
+    value = sin(pygame.time.get_ticks())
+    if value >= 0:
+        return 255
+    else:
+        return 0

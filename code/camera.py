@@ -34,7 +34,7 @@ class YSortCameraGroup(pygame.sprite.Group):
 
             self.display_surface.blit(sprite.image, offset_pos)
 
-    async def enemy_update(self, player):
+    async def enemy_update(self, player, entities, objects):
         enemy_sprites = [
             sprite
             for sprite in self.sprites()
@@ -43,8 +43,13 @@ class YSortCameraGroup(pygame.sprite.Group):
 
         # Run regular updates
         for enemy in enemy_sprites:
-            enemy.enemy_update(player)
+            enemy.enemy_update(player, entities, objects)
 
         # Run AI decisions concurrently with timeout
         # Create tasks for all enemies
-        await asyncio.gather(*(enemy.enemy_decision(player) for enemy in enemy_sprites))
+        await asyncio.gather(
+            *(
+                enemy.enemy_decision(player, entities, objects)
+                for enemy in enemy_sprites
+            )
+        )

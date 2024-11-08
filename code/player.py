@@ -4,6 +4,7 @@ from support import import_folder
 from settings import weapon_data, magic_data
 from entity import Entity
 from settings import HITBOX_OFFSET
+from support import wave_value
 
 # from enemy import Enemy
 
@@ -108,20 +109,20 @@ class Player(Entity):
         keys = pygame.key.get_pressed()
 
         # movement
-        if keys[pygame.K_RIGHT]:
+        if keys[pygame.K_d]:
             self.direction.x = 1
             self.status = "right"
-        elif keys[pygame.K_LEFT]:
+        elif keys[pygame.K_a]:
             self.direction.x = -1
             self.status = "left"
         # weapon
         else:
             self.direction.x = 0
 
-        if keys[pygame.K_DOWN]:
+        if keys[pygame.K_s]:
             self.direction.y = 1
             self.status = "down"
-        elif keys[pygame.K_UP]:
+        elif keys[pygame.K_w]:
             self.direction.y = -1
             self.status = "up"
         else:
@@ -153,7 +154,7 @@ class Player(Entity):
             self.damage = self.get_full_weapon_damage()
 
         # magic
-        if keys[pygame.K_r] and not self.attacking:
+        if keys[pygame.K_LSHIFT] and not self.attacking:
             self.attacking = True
             self.attack_time = pygame.time.get_ticks()
             self.attack_type = "magic"
@@ -211,7 +212,7 @@ class Player(Entity):
 
     def flickering(self):
         if not self.vulnerable:
-            self.image.set_alpha(self.wave_value())
+            self.image.set_alpha(wave_value())
         else:
             self.image.set_alpha(255)
 

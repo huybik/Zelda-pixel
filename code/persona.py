@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from enemy import Enemy
+    from player import Player
+    from tile import Tile
 
 
 class API:
@@ -67,14 +69,20 @@ class Persona:
 
         # actions
 
-    async def fetch_decision(self, entity: "Enemy", player):
+    async def fetch_decision(
+        self,
+        entity: "Enemy",
+        player: "Player",
+        entities: list["Enemy"],
+        objects: list["Tile"],
+    ):
 
-        observation = self.memory.parse_data(entity, player)
+        observation = self.memory.save_observation(entity, player, entities, objects)
         memory = self.summary
 
         prompt = (
-            f"You are {entity.characteristic}. "
-            f"Using current 'observation' about you and the player, and your 'memory' to decide what to do next. "
+            f"You are {entity.monster_name} with id{entity.monster_id} and you are {entity.characteristic} but will attack if threatened. "
+            f"Using current 'observation' about the world and your 'memory' to decide what to do next. "
             f'Decide your next location with "location":"x,y" and if you should attack the player with "attack":"yes/no" and your reason for moving in less than 5 words with "reason":"your reason". If you want to attack the player move to the player location.'
             'Output format: {"move": "x,y", "attack": "yes/no", "reason": "your reason"}\n'
             f"'Observation': {observation}\n"
@@ -84,7 +92,7 @@ class Persona:
         print(f"prompt: {prompt}\n")
         try:
             response = await self.api.get_response(user_input=prompt)
-            print(f"decision: {response} \n")
+            print(f"{entity.monster_name}_{entity.monster_id} decision: {response} \n")
 
             # self.memory.write_data(response, "decision", monster_id)
             self.decision = response
@@ -94,12 +102,14 @@ class Persona:
             # Keep the current direction on error
 
     async def summary_context(self, entity: "Enemy", threshold=50):
-        memory_stream = self.memory.read_data("stream", entity.monster_id)
+        memory_stream = self.memory.read_data(
+            f"stream_{entity.monster_name}_{entity.monster_id}"
+        )
         prompt = f"Fetch important events from 'memory stream' then summary them in less than {threshold} words. \n'memory stream': {memory_stream}"
 
         try:
             response = await self.api.get_response(user_input=prompt)
-            print(f"summary: {response} \n")
+            print(f"{entity.monster_name}_{entity.monster_id} summary: {response} \n")
 
             # self.memory.write_data(response, "summary", monster_id)
             self.summary = response
