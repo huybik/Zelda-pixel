@@ -12,8 +12,8 @@ from entity import Entity
 from particles import AnimationPlayer
 from magic import MagicPlayer
 from upgrade import Upgrade
-from game_state import export_game_state  # Import the export function
-from persona import API  # Import the API class
+from persona import Persona  # Import the API class
+from memstream import MemoryStream
 from camera import YSortCameraGroup
 
 # import pygame_asyncio  # You'll need to install this package
@@ -33,8 +33,8 @@ class Level:
         self.enemies = []
 
         # persona
-        self.chat_api = API()
-
+        self.persona = Persona()
+        self.memory = MemoryStream()
         # user interface
         self.ui = UI()
         # self.text_bubble = TextBubble()
@@ -48,8 +48,6 @@ class Level:
         # particles
         self.animation_player = AnimationPlayer()
         self.magic_player = MagicPlayer(self.animation_player)
-
-        self.export_key = pygame.K_s  # Define the key to export game state
 
     def create_map(self):
         layouts = {
@@ -111,7 +109,7 @@ class Level:
                                     monster_name = "raccoon"
                                 else:
                                     monster_name = "squid"
-
+                                monster_id = f"{col_index}-{row_index}"
                                 self.enemies.append(
                                     Enemy(
                                         monster_name,
@@ -125,7 +123,10 @@ class Level:
                                         self.obstacle_sprites,
                                         self.trigger_death_particles,
                                         self.add_exp,
-                                        self.chat_api,
+                                        self.persona,
+                                        self.memory,
+                                        monster_id,
+                                        self.damage_player,
                                     )
                                 )
 
@@ -164,17 +165,17 @@ class Level:
                             if attack_sprite.sprite_type != "enemy":
                                 target_sprite.get_damage(self.player)
 
-                    if target_sprite.sprite_type == "player":
-                        attack_sprite: Enemy
-                        # attack sprite can be weapon or enemy
-                        if attack_sprite.sprite_type == "enemy":
+                    # if target_sprite.sprite_type == "player":
+                    #     attack_sprite: Enemy
+                    #     # attack sprite can be weapon or enemy
+                    #     if attack_sprite.sprite_type == "enemy":
 
-                            damage = attack_sprite.attack()
-                            if damage:
-                                self.damage_player(
-                                    damage,
-                                    attack_sprite.attack_type,
-                                )
+                    #         damage = attack_sprite.attack()
+                    #         if damage:
+                    #             self.damage_player(
+                    #                 damage,
+                    #                 attack_sprite.attack_type,
+                    #             )
 
         if not self.player.attacking:
             for attackable_sprite in self.attackable_sprites:
@@ -215,11 +216,6 @@ class Level:
 
     def toggle_menu(self):
         self.game_paused = not self.game_paused
-
-    def handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == self.export_key:
-                export_game_state(self)
 
     async def run(self):
         self.visible_sprites.custom_draw(self.player)

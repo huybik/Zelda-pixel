@@ -3,9 +3,15 @@ from entity import Entity
 from settings import monster_data
 from debug import debug
 import time
-import asyncio
 from boubble import TextBubble
+import json
+import asyncio
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from persona import Persona
+    from memstream import MemoryStream
 
 # from ui import UI
 
@@ -20,7 +26,10 @@ class Enemy(Entity):
         obstacle_sprites,
         trigger_death_particles,
         add_exp,
-        chat_api,
+        persona: "Persona",
+        memory: "MemoryStream",
+        monster_id,
+        damage_player,
     ):
 
         # general setup
@@ -28,11 +37,14 @@ class Enemy(Entity):
         self.sprite_type = "enemy"
         self.trigger_death_particles = trigger_death_particles
         self.add_exp = add_exp
+        self.damage_player = damage_player
+        self.groups = groups
 
         # graphic setup
         path = "../graphics/monsters/"
         self.animations = {"idle": [], "move": [], "attack": []}
         self.import_graphics(path, monster_name, self.animations)
+        self.text_bubble = None
 
         self.status = "idle"
         self.image = self.animations[self.status][self.frame_index]
@@ -42,6 +54,7 @@ class Enemy(Entity):
         # self.hitbox = self.rect.inflate(0, HITBOX_OFFSET["enemy"])
         self.hitbox = self.rect
         self.obstacle_sprites = obstacle_sprites
+        self.target = pygame.math.Vector2()
 
         # stats
         self.monster_name = monster_name
@@ -56,11 +69,13 @@ class Enemy(Entity):
         self.notice_radius = monster_info["notice_radius"]
         self.attack_type = monster_info["attack_type"]
         self.characteristic = monster_info["characteristic"]
+        self.monster_id = monster_id
 
         # player interaction
         self.attack_time = 0
-        self.attack_cooldown = 3000
+        self.attack_cooldown = 2000
         self.can_attack = True
+        self.want_to_attack = False
 
         # invincibility timer
         self.first_hit = False
@@ -76,17 +91,25 @@ class Enemy(Entity):
         # self.invincibility_duration = 300
 
         # ChatGPT API
-        self.chat_api = chat_api
+        self.persona = persona
+        self.memory = memory
+
         self.last_chat_time = 0
+        self.last_summary_time = 0
+
         self.chat_interval = 3  # seconds
+        self.summary_interval = 10  # seconds
         self.reason = None
 
-        self.movement_task = None
-        self.current_direction = pygame.math.Vector2()
+        self.event_log_interval = 1000  # miliseconds
+        self.last_event_log_time = 0
 
-        self.attackable = "False"
+        self.decision_task = None
+        self.summary_task = None
 
-        self.text_bubble = TextBubble([groups[0]])  # Add to visible sprites group
+        self.current_decision = None
+
+        # store decision and summary
 
     def get_player_distance_direction(self, player):
         enemy_vec = pygame.math.Vector2(self.rect.center)
@@ -101,6 +124,7 @@ class Enemy(Entity):
         return distance, direction
 
     def cooldown(self):
+        # this cooldown to prevent attack animation spam
         if not self.can_attack:
             current_time = pygame.time.get_ticks()
             if current_time - self.attack_time >= self.attack_cooldown:
@@ -112,19 +136,14 @@ class Enemy(Entity):
         self.frame_index += self.animation_speed
         if self.frame_index >= len(animation):
             self.frame_index = 0
+            if self.status == "attack":
+                self.can_attack = False
+                self.status = "move"
         self.image = animation[int(self.frame_index)]
 
-    def attack(self):
-        # Execute attack if decided
-        if self.status == "attack" and self.can_attack:
-            self.attack_time = pygame.time.get_ticks()
-            self.attack_sound.play()
-            self.can_attack = False
-            return True
-        else:
-            return False
-
     def get_damage(self, player):
+        # log memory
+
         if not self.first_hit:
             self.hit_sound.play()
             attack_type = player.attack_type
@@ -134,120 +153,148 @@ class Enemy(Entity):
                 self.health -= player.get_full_magic_damage()
                 # magic damage
             self.first_hit = True
+            # save attacked event
+            self.memory.log_memory(self, player)
 
-    def check_death(self):  # this should be inside enemy
         if self.health <= 0:
+            self.status = "death"
+            # save death event
+            self.memory.log_memory(self, player)
 
             self.kill()
+            self.text_bubble.kill()
             self.trigger_death_particles(self.monster_name, self.rect.center)
             self.add_exp(self.exp)
             self.death_sound.play()
 
-    # def hit_reaction(self, player: Player):
-    #     if self.first_hit:
-    #         self.direction *= -(player.knockback - self.resistance)
-
-    async def fetch_decision(self, player):
-        distance, direction = self.get_player_distance_direction(player)
-        prompt = (
-            # f"Entity '{self.monster_name}' has {self.health}/{self.max_health} health. "
-            f"Entity is at position {self.rect.center} and player is at {player.rect.center}."
-            f"Entity distance and direction to player: {distance}, {direction}."
-            f"Entity can attack if distance less than {self.attack_radius}. "
-            f"Entity is {self.characteristic}. "
-            'Response next move for the entity with either "attack": "yes/no" and "move: "x,y" where x,y is the direction vector to move. Then response for the move with "reason":"detail" in less than 4 words'
-            'Example response: {"attack": "no", "move": "134,-23", "reason":"I\'m running away"}'
-        )
-        print(f"prompt: {prompt}")
-
-        try:
-            response = await asyncio.wait_for(
-                asyncio.to_thread(self.chat_api.get_response, user_input=prompt),
-                timeout=5.0,  # 1 second timeout
-            )
-            print(f"response: {response}")
-
-            self.parse_decision(response)
-
-        except (asyncio.TimeoutError, Exception) as e:
-            print(f"Error getting movement decision: {e}")
-            # Keep the current direction on error
-
     def parse_decision(self, response):
         try:
-            import json
-
             data = json.loads(response)
 
-            # Check for attack decision
+            coords = data["move"].split(",")
+            if len(coords) != 2:
+                raise ValueError("Move coordinates must be in format 'x,y'")
 
-            if data["attack"].lower() == "yes":
-                self.status = "attack"
-            else:
-                coords = data["move"].split(",")
-                if len(coords) != 2:
-                    raise ValueError("Move coordinates must be in format 'x,y'")
+            x = float(coords[0].strip())
+            y = float(coords[1].strip())
 
-                x = float(coords[0].strip())
-                y = float(coords[1].strip())
-
-                vector = pygame.math.Vector2(x, y)
-                if vector.magnitude() > 0:
-                    vector = vector.normalize()
-                self.direction = vector
-                self.status = "move"
+            self.target = pygame.math.Vector2(x, y)
 
             self.reason = data["reason"]
+            self.want_to_attack = data["attack"].lower() == "yes"
 
         except (json.JSONDecodeError, ValueError, AttributeError, KeyError) as e:
             print(f"Error parsing decision response: {e}")
 
-    def update(self):
+    def move(self, target: pygame.math.Vector2, speed: int):
+        # Calculate direction vector to target location
+        current = pygame.math.Vector2(self.hitbox.centerx, self.hitbox.centery)
 
-        if self.status == "move":  # prevent enemy from moving when attacking
-            self.move(self.speed)
+        if target:
+            self.direction = target - current
+            distance = self.direction.magnitude()
+            if distance != 0:
+                self.direction = self.direction.normalize()
+            if distance < 3:
+                return
+            # if self.direction.magnitude() < 2:  # this to ignore knockback magnitude
+        # detect collision before moving
+        self.hitbox.x += self.direction.x * speed
+        self.collision("horizontal")
+        self.hitbox.y += self.direction.y * speed
+        self.collision("vertical")
 
-        self.attack()
-        self.animate()
-        self.cooldown()
-        self.check_death()
+        self.rect.center = self.hitbox.center
 
-        # Update text bubble position and text
+    def attack(self, player):
+        # Execute attack if decided
+        # can attack will end after attack animation
+        # can attack will be set to true after cooldow
+        if self.can_attack:
+            self.status = "attack"
+            self.attack_time = pygame.time.get_ticks()
+            self.attack_sound.play()
+            self.damage_player(self.attack_damage, self.attack_type)
+
+    def interaction(self, player, distance):
+        if not self.text_bubble:
+            self.text_bubble = TextBubble([self.groups[0]])
+
         if self.reason:
             self.text_bubble.update_text(self.reason, self.rect)
-        else:
-            self.text_bubble.update_text("", self.rect)
+
+        any_key_pressed = any(pygame.key.get_pressed())
+        current_time = pygame.time.get_ticks()
+        if (
+            current_time - self.last_event_log_time >= self.event_log_interval
+            and any_key_pressed
+        ):
+            self.memory.log_memory(self, player)
+            self.last_event_log_time = current_time
+
+        if self.persona.decision != self.current_decision:
+            self.current_decision = self.persona.decision
+            self.parse_decision(self.current_decision)
+            if distance <= self.attack_radius and self.want_to_attack:
+                self.attack(player)
+            else:
+                self.status = "move"
+
+    def update(self):
+        # main update for sprite
+        # if self.status == "move":
+        self.move(self.target, self.speed)
+
+        self.animate()
+        self.cooldown()
 
     def enemy_update(self, player):
         # self.get_status(player)
+        distance, _ = self.get_player_distance_direction(player)
 
         # knockback
         if self.first_hit:
-            _, self.direction = self.get_player_distance_direction(player)
             self.direction *= -(player.knockback - self.resistance) / 5
-            self.move(self.speed)
+            self.move(None, self.speed)
 
-    async def enemy_decision(self, player):
-        # Get current state
-        distance, _ = self.get_player_distance_direction(player)
-        current_time = time.time()
-
-        # If enemy is outside notice radius, return to idle
         if distance > self.notice_radius:
             self.status = "idle"
             self.direction = pygame.math.Vector2()
-            return
 
-        # Update attackable status
+            if self.text_bubble:
+                self.text_bubble.kill()
+                self.text_bubble = None
+
         else:
-            # Check if it's time for a new decision
-            if current_time - self.last_chat_time >= self.chat_interval:
-                if self.movement_task is None or self.movement_task.done():
-                    self.movement_task = asyncio.create_task(
-                        self.fetch_decision(player)
-                    )
-                self.last_chat_time = current_time
+            self.interaction(player, distance)
 
-        # In UI.display() or wherever you want to show the bubble:
-        # self.ui.text_bubble.draw("Hello, I am an enemy!", self.rect)
-        debug(f"{self.direction, self.status, self.attackable, self.reason}")
+    async def enemy_decision(self, player):
+        try:
+            distance, _ = self.get_player_distance_direction(player)
+            current_time = time.time()
+
+            if distance <= self.notice_radius:
+                if current_time - self.last_chat_time >= self.chat_interval:
+                    # Add timeout to prevent hanging
+                    if self.decision_task is None or self.decision_task.done():
+                        self.decision_task = asyncio.create_task(
+                            asyncio.wait_for(
+                                self.persona.fetch_decision(self, player),
+                                timeout=5.0,
+                            )
+                        )
+                        self.last_chat_time = current_time
+
+                if current_time - self.last_summary_time >= self.summary_interval:
+                    if self.summary_task is None or self.summary_task.done():
+                        self.summary_task = asyncio.create_task(
+                            asyncio.wait_for(
+                                self.persona.summary_context(self),
+                                timeout=5.0,
+                            )
+                        )
+
+                        self.last_summary_time = current_time
+
+        except Exception as e:
+            print(f"Enemy decision error: {e}")

@@ -3,25 +3,17 @@ from __future__ import annotations
 import asyncio
 import pygame
 
-# import pygame_asyncio
 from level import Level
-
 from settings import WIDTH, HEIGTH, FPS, WATER_COLOR
 from debug import debug
-
-from pygame.locals import *
 
 
 class Game:
     def __init__(self):
-
         pygame.init()
-        # flags = DOUBLEBUF
         self.screen = pygame.display.set_mode((WIDTH, HEIGTH))
         pygame.display.set_caption("Zelda")
-
         self.clock = pygame.time.Clock()
-
         self.level = Level()
 
         # sound
@@ -35,20 +27,18 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_m:
                         self.level.toggle_menu()
 
-                self.level.handle_event(event)
-
             self.screen.fill(WATER_COLOR)
             await self.level.run()
             fps = self.clock.get_fps()
-            # debug(f"FPS: {fps:.2f}")
+            debug(f"FPS: {fps:.2f}")
 
             pygame.display.update()
-            self.clock.tick(FPS)
+            self.clock.tick(60)
+            # await asyncio.sleep(0.001)
 
 
 async def main():
@@ -57,7 +47,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    # Initialize pygame_asyncio
-    # pygame_asyncio.init()
-    # Run the async game loop
     asyncio.run(main())

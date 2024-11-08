@@ -41,7 +41,10 @@ class YSortCameraGroup(pygame.sprite.Group):
             if hasattr(sprite, "sprite_type") and sprite.sprite_type == "enemy"
         ]
 
+        # Run regular updates
         for enemy in enemy_sprites:
             enemy.enemy_update(player)
-        # Use asyncio.gather to run all enemy updates concurrently
-        await asyncio.gather(*[enemy.enemy_decision(player) for enemy in enemy_sprites])
+
+        # Run AI decisions concurrently with timeout
+        # Create tasks for all enemies
+        await asyncio.gather(*(enemy.enemy_decision(player) for enemy in enemy_sprites))

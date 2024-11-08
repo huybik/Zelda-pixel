@@ -99,7 +99,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 120,
         "notice_radius": 450,
-        "characteristic": "hostile to player",
+        "characteristic": "wise to what player did",
     },
     "spirit": {
         "health": 100,
@@ -111,7 +111,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 60,
         "notice_radius": 300,
-        "characteristic": "hostile to player",
+        "characteristic": "afraid of player",
     },
     "bamboo": {
         "health": 70,

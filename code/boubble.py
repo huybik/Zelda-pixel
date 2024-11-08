@@ -19,11 +19,6 @@ class TextBubble(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
     def update_text(self, text, target_rect):
-        if not text:
-            self.image = pygame.Surface((1, 1), pygame.SRCALPHA)
-            self.rect = self.image.get_rect()
-            return
-
         # Render text
         text_surface = self.font.render(text, True, self.text_color)
         text_rect = text_surface.get_rect()

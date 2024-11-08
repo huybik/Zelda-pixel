@@ -237,6 +237,19 @@ class Player(Entity):
         else:
             self.energy = self.stats["energy"]
 
+    def move(self, speed):
+        if self.direction.magnitude() != 0:
+            if self.direction.magnitude() < 2:  # this to ignore knockback magnitude
+                self.direction = self.direction.normalize()
+
+            # detect collision before moving
+            self.hitbox.x += self.direction.x * speed
+            self.collision("horizontal")
+            self.hitbox.y += self.direction.y * speed
+            self.collision("vertical")
+
+            self.rect.center = self.hitbox.center
+
     def update(self):
         self.input()
         self.cooldowns()
