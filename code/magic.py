@@ -1,8 +1,14 @@
 import pygame
-from player import Player
 from particles import AnimationPlayer
 from settings import TILESIZE
 from random import randint
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from entity import Entity
+    from tile import Tile
+    from player import Player
 
 
 class MagicPlayer:
@@ -13,7 +19,7 @@ class MagicPlayer:
             "flame": pygame.mixer.Sound("../audio/Fire.wav"),
         }
 
-    def heal(self, player: Player, strength, cost, groups):
+    def heal(self, player: "Player", strength, cost, groups):
         if player.energy >= cost:
             self.sounds["heal"].play()
             player.health += strength
@@ -23,7 +29,7 @@ class MagicPlayer:
             self.animation_player.create_particles("aura", player.rect.center, groups)
             self.animation_player.create_particles("heal", player.rect.center, groups)
 
-    def flame(self, player: Player, strength, cost, groups):
+    def flame(self, player: "Player", strength, cost, groups):
         if player.energy >= cost:
             # create 6 flames
             self.sounds["flame"].play()

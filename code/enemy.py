@@ -24,22 +24,16 @@ class Enemy(Entity):
 
     def __init__(
         self,
-        monster_name,
+        name,
+        full_name,
         pos,
         groups,
         obstacle_sprites,
-        trigger_death_particles,
-        add_exp,
-        monster_id,
-        damage_player,
     ):
 
         # general setup
         super().__init__(groups)
         self.sprite_type = "enemy"
-        self.trigger_death_particles = trigger_death_particles
-        self.add_exp = add_exp
-        self.damage_player = damage_player
         self.groups = groups
         self.memory = MemoryStream()
         self.persona = Persona()
@@ -47,7 +41,7 @@ class Enemy(Entity):
         # graphic setup
         path = "../graphics/monsters/"
         self.animations = {"idle": [], "move": [], "attack": []}
-        self.import_graphics(path, monster_name, self.animations)
+        self.import_graphics(path, name, self.animations)
         self.text_bubble = None
 
         self.status = "idle"
@@ -57,11 +51,12 @@ class Enemy(Entity):
         # movement
         self.hitbox = self.rect
         self.obstacle_sprites = obstacle_sprites
-        self.target = pygame.math.Vector2()
+        self.target_location = pygame.math.Vector2()
+        self.current_speed = 0
 
         # stats
-        self.monster_name = monster_name
-        monster_info = monster_data[self.monster_name]
+        self.name = name
+        monster_info = monster_data[self.name]
         self.health = monster_info["health"]
         self.max_health = monster_info["health"]
         self.exp = monster_info["exp"]
@@ -72,17 +67,9 @@ class Enemy(Entity):
         self.notice_radius = monster_info["notice_radius"]
         self.attack_type = monster_info["attack_type"]
         self.characteristic = monster_info["characteristic"]
-        self.monster_id = monster_id
+        self.full_name = full_name
 
         self.want_to_attack = False
-
-        # sounds
-        self.death_sound = pygame.mixer.Sound("../audio/death.wav")
-        self.hit_sound = pygame.mixer.Sound("../audio/hit.wav")
-        self.attack_sound = pygame.mixer.Sound(monster_info["attack_sound"])
-        self.death_sound.set_volume(0.6)
-        self.hit_sound.set_volume(0.6)
-        self.attack_sound.set_volume(0.6)
 
         # ChatGPT API params
         self.last_chat_time = 0
@@ -96,6 +83,8 @@ class Enemy(Entity):
         self.summary_task = None
 
         self.current_decision = None
+        self.event_status = None
+        self.target_name = None
 
         # cooldowns
         self.observation_time = 0
@@ -104,11 +93,15 @@ class Enemy(Entity):
 
         self.vulnerable = True
         self.vulnerable_time = 0
-        self.vulnerable_duration = 400
+        self.vulnerable_duration = 2000
 
         self.attack_time = 0
         self.attack_cooldown = 2000
         self.can_attack = True
+
+        # sound
+        self.attack_sound = pygame.mixer.Sound(monster_info["attack_sound"])
+        self.attack_sound.set_volume(0.6)
 
     def cooldown(self):
         # this cooldown to prevent attack animation spam
@@ -133,109 +126,69 @@ class Enemy(Entity):
                 self.status = "move"
         self.image = animation[int(self.frame_index)]
 
-    def get_damage(self, player):
-        # log memory
-
-        if self.vulnerable:
-            self.hit_sound.play()
-            attack_type = player.attack_type
-            if attack_type == "weapon":
-                self.health -= player.get_full_weapon_damage()
-            elif attack_type == "magic":
-                self.health -= player.get_full_magic_damage()
-                # magic damage
-
-            # set vulnerable to false
-            self.vulnerable = False
-            self.vulnerable_time = pygame.time.get_ticks()
-
-        if self.health <= 0:
-            self.status = "death"
-            # save death event
-
-            self.kill()
-            self.text_bubble.kill()
-            self.trigger_death_particles(self.monster_name, self.rect.center)
-            self.add_exp(self.exp)
-            self.death_sound.play()
-
-        # save attacked event
-        self.can_save_observation = True
-
-    def parse_decision(self, response):
-        try:
-            data = json.loads(response)
-
-            coords = data["move"].split(",")
-            if len(coords) != 2:
-                raise ValueError("Move coordinates must be in format 'x,y'")
-
-            x = float(coords[0].strip())
-            y = float(coords[1].strip())
-
-            self.target = pygame.math.Vector2(x, y)
-
-            self.reason = self.monster_id + ":" + data["reason"]
-            self.want_to_attack = data["attack"].lower() == "yes"
-
-        except (json.JSONDecodeError, ValueError, AttributeError, KeyError) as e:
-            print(f"Error parsing decision response: {e}")
-
     def move(self, target: pygame.math.Vector2, speed: int):
-        # Calculate direction vector to target location
         current = pygame.math.Vector2(self.hitbox.centerx, self.hitbox.centery)
 
         if target:
-            self.direction = target - current
-            distance = self.direction.magnitude()
+            # Calculate desired direction
+            desired_direction = target - current
+            distance = desired_direction.magnitude()
+
             if distance != 0:
-                self.direction = self.direction.normalize()
+                desired_direction = desired_direction.normalize()
             if distance < 3:
                 return
 
-            # Look ahead several steps to find best path
-            best_direction = self.direction
-            least_collisions = float("inf")
-            prediction_steps = 5  # Number of steps to look ahead
+            # Smooth direction changes (lerp between current and desired direction)
+            if hasattr(self, "current_direction"):
+                smoothing = 0.1  # Lower value = smoother movement
+                self.current_direction = pygame.math.Vector2(
+                    self.current_direction.x
+                    + (desired_direction.x - self.current_direction.x) * smoothing,
+                    self.current_direction.y
+                    + (desired_direction.y - self.current_direction.y) * smoothing,
+                )
+            else:
+                self.current_direction = desired_direction
 
-            # Test main direction and alternates
-            possible_directions = [
-                self.direction,
-                pygame.math.Vector2(self.direction.y, -self.direction.x),
-                pygame.math.Vector2(-self.direction.y, self.direction.x),
-                pygame.math.Vector2(-self.direction.y, -self.direction.x),
-            ]
+            self.direction = self.current_direction.normalize()
 
-            for test_direction in possible_directions:
-                collisions = 0
-                test_rect = self.hitbox.copy()
+            # Check if we're stuck
+            if hasattr(self, "last_position"):
+                pos_difference = current - self.last_position
+                if pos_difference.length() < 0.1:  # If barely moving
+                    self.stuck_time = getattr(self, "stuck_time", 0) + 1
+                    if self.stuck_time > 10:  # If stuck for too long
+                        # Try moving perpendicular to current direction
+                        self.direction = pygame.math.Vector2(
+                            -self.direction.y, self.direction.x
+                        )
+                        self.stuck_time = 0
+                else:
+                    self.stuck_time = 0
+            self.last_position = current
 
-                # Predict multiple steps ahead
-                for step in range(prediction_steps):
-                    next_pos = pygame.math.Vector2(test_rect.centerx, test_rect.centery)
-                    next_pos.x += test_direction.x * speed
-                    next_pos.y += test_direction.y * speed
-                    test_rect.center = next_pos
-
-                    if self.check_collision(test_rect):
-                        collisions += 1
-                        break
-
-                # Choose direction with least predicted collisions
-                if collisions < least_collisions:
-                    least_collisions = collisions
-                    best_direction = test_direction
-
-            # Use the best found direction
-            self.direction = best_direction
-
-            self.rect.center = self.hitbox.center
+            # Gradual speed adjustment
+            base_speed = speed
+            if self.check_collision(self.hitbox):
+                self.current_speed = (
+                    getattr(self, "current_speed", base_speed) * 0.95
+                )  # Gradual slowdown
+            else:
+                self.current_speed = min(
+                    base_speed, getattr(self, "current_speed", base_speed) * 1.05
+                )  # Gradual speedup
 
         # Apply movement
-        self.hitbox.x += self.direction.x * speed
+        if self.current_speed > 0:
+            move_delta = self.direction * self.current_speed
+        else:
+            move_delta = self.direction * self.speed
+        self.hitbox.x += move_delta.x
         self.collision("horizontal")
-        self.hitbox.y += self.direction.y * speed
+        self.hitbox.y += move_delta.y
         self.collision("vertical")
+        self.rect.center = self.hitbox.center
 
     def check_collision(self, test_rect):
         for sprite in self.obstacle_sprites:
@@ -243,15 +196,36 @@ class Enemy(Entity):
                 return True
         return False
 
-    def attack(self):
+    def collision(self, direction):
+        if direction == "horizontal":
+            for sprite in self.obstacle_sprites:
+                if sprite.hitbox.colliderect(self.hitbox):
+                    if self.direction.x > 0:  # moving right
+                        self.hitbox.right = sprite.hitbox.left
+                    if self.direction.x < 0:  # moving left
+                        self.hitbox.left = sprite.hitbox.right
+
+        if direction == "vertical":
+            for sprite in self.obstacle_sprites:
+                if sprite.hitbox.colliderect(self.hitbox):
+                    if self.direction.y > 0:  # moving down
+                        self.hitbox.bottom = sprite.hitbox.top
+                    if self.direction.y < 0:  # moving up
+                        self.hitbox.top = sprite.hitbox.bottom
+
+    def attack(self, target: "Entity"):
         # Execute attack if decided
         # can attack will end after attack animation
         # can attack will be set to true after cooldow
+        if self.target_name != "player":
+            print(self.target_name)
+
         if self.can_attack:
             self.status = "attack"
             self.attack_time = pygame.time.get_ticks()
             self.attack_sound.play()
-            self.damage_player(self.attack_damage, self.attack_type)
+            target.get_damage(attacker=self)
+            self.event_status = f"attack entity {target.full_name}"
             self.can_save_observation = True
 
     def flickering(self):
@@ -263,7 +237,8 @@ class Enemy(Entity):
     def interaction(
         self, player: "Player", entities: list["Entity"], objects: list["Tile"]
     ):
-
+        # this is entity player interaction
+        # TODO: refactor this to not handle entity vs entity
         if not self.text_bubble:
             self.text_bubble = TextBubble([self.groups[0]])
 
@@ -272,16 +247,30 @@ class Enemy(Entity):
 
         if self.persona.decision != self.current_decision:
             self.current_decision = self.persona.decision
-            self.parse_decision(self.current_decision)
+            decision = self.persona.parse_decision(self.current_decision)
+            if decision:
+                self.target_location = decision["target_location"]
+                self.want_to_attack = decision["want_to_attack"]
+                self.target_name = decision["target_name"]
+                self.reason = decision["reason"]
 
-        distance, _ = get_distance_direction(self, player)
+        # chose target
+
+        target = player
+        for entity in entities:
+            if entity != self and entity.full_name == self.target_name:
+                target = entity
+                break
+
+        distance, _ = get_distance_direction(self, target)
         if distance <= self.attack_radius and self.want_to_attack:
-            self.attack()
+            self.attack(target)
         else:
             self.status = "move"
 
-        any_key_pressed = any(pygame.key.get_pressed())
-        if self.can_save_observation and any_key_pressed:
+        # any_key_pressed = any(pygame.key.get_pressed())
+        # if self.can_save_observation and any_key_pressed:
+        if self.can_save_observation:
             self.memory.save_observation(self, player, entities, objects)
             self.observation_time = pygame.time.get_ticks()
             self.can_save_observation = False
@@ -289,7 +278,7 @@ class Enemy(Entity):
     def update(self):
         # main update for sprite
         # if self.status == "move":
-        self.move(self.target, self.speed)
+        self.move(self.target_location, self.speed)
 
         self.animate()
         self.cooldown()
@@ -300,10 +289,7 @@ class Enemy(Entity):
     ):
         distance, _ = get_distance_direction(self, player)
         # knockback
-        if not self.vulnerable:
-            _, self.direction = get_distance_direction(self, player)
-            self.direction *= -(player.knockback - self.resistance) / 5
-            self.move(None, self.speed)
+
         if distance > self.notice_radius:
             self.status = "idle"
             self.direction = pygame.math.Vector2()
@@ -338,7 +324,9 @@ class Enemy(Entity):
                     if self.summary_task is None or self.summary_task.done():
                         self.summary_task = asyncio.create_task(
                             asyncio.wait_for(
-                                self.persona.summary_context(self),
+                                self.persona.summary_context(
+                                    self, player, entities, objects
+                                ),
                                 timeout=5.0,
                             )
                         )

@@ -9,6 +9,7 @@ class Weapon(pygame.sprite.Sprite):
         self.direction = player.status.split("_")[0]
         self.player = player
         self.sprite_type = "weapon"
+        # self.name = self.player.weapon
         # init weapon
         self.allign()
 

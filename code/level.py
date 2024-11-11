@@ -10,9 +10,10 @@ from ui import UI
 from enemy import Enemy
 from entity import Entity
 from particles import AnimationPlayer
-from magic import MagicPlayer
+
 from upgrade import Upgrade
 from camera import YSortCameraGroup
+from magic import MagicPlayer
 
 # import pygame_asyncio  # You'll need to install this package
 
@@ -100,29 +101,25 @@ class Level:
                                 )
                             else:
                                 if col == "390":
-                                    monster_name = "bamboo"
+                                    name = "bamboo"
                                 elif col == "391":
-                                    monster_name = "spirit"
+                                    name = "spirit"
                                 elif col == "392":
-                                    monster_name = "raccoon"
+                                    name = "raccoon"
                                 elif col == "393":
-                                    monster_name = "squid"
-                                monster_id = f"{col_index}{row_index}"
+                                    name = "squid"
+                                full_name = f"{name}{col_index}{row_index}"
                                 self.entities.append(
                                     Enemy(
-                                        monster_name,
+                                        name,
+                                        full_name,
                                         (x, y),
                                         [
                                             self.visible_sprites,
-                                            # self.obstacle_sprites,
                                             self.attack_sprites,
                                             self.attackable_sprites,
                                         ],
                                         self.obstacle_sprites,
-                                        self.trigger_death_particles,
-                                        self.add_exp,
-                                        monster_id,
-                                        self.damage_player,
                                     )
                                 )
 
@@ -136,6 +133,7 @@ class Level:
         # self.magic =
 
     def collision(self):
+
         # TODO: refactor this to not handle the logic
         for attack_sprite in self.attack_sprites:
             collision_sprites: list[Entity] = pygame.sprite.spritecollide(
@@ -143,60 +141,42 @@ class Level:
             )
             if collision_sprites:
                 for target_sprite in collision_sprites:
-                    if self.player.attacking:
-                        if target_sprite.sprite_type == "grass":
-                            target_sprite.kill()
+                    if target_sprite != attack_sprite:
+                        if self.player.attacking:
+                            if target_sprite.sprite_type == "grass":
+                                target_sprite.kill()
 
-                            # particles
-                            pos = target_sprite.rect.center
-                            offset = pygame.math.Vector2((0, 50))
-                            for leaf in range(random.randint(2, 5)):
-                                self.animation_player.create_grass_particles(
-                                    pos - offset, [self.visible_sprites]
-                                )
+                                # particles
+                                pos = target_sprite.rect.center
+                                offset = pygame.math.Vector2((0, 50))
+                                for leaf in range(random.randint(2, 5)):
+                                    self.animation_player.create_grass_particles(
+                                        pos - offset, [self.visible_sprites]
+                                    )
 
-                        elif target_sprite.sprite_type == "enemy":
-                            target_sprite: Enemy
-                            # check if attack come from player weapon
-                            if attack_sprite.sprite_type == "weapon":
-                                target_sprite.get_damage(self.player)
+                            # player attack
 
-    def damage_player(self, amount, attack_type):
-        if self.player.vulnerable:
-            self.player.vulnerable = False
-            self.player.vulnerable_time = pygame.time.get_ticks()
-            self.player.health -= amount
+                            elif target_sprite.sprite_type == "enemy":
+                                if (
+                                    attack_sprite.sprite_type == "magic"
+                                    or attack_sprite.sprite_type == "weapon"
+                                ):
+                                    target_sprite.get_damage(self.player)
 
-            # particles
-            pos = self.player.rect.center
-            self.animation_player.create_particles(
-                attack_type, pos, [self.visible_sprites]
-            )
-
-            if self.player.health < 0:
-                self.trigger_death_particles("player", self.player.rect.center)
-                self.player.player_death_sound.play()
-                # self.player.kill()
-
-    def trigger_death_particles(self, particle_type, pos):
-
-        self.animation_player.create_particles(particle_type, pos, self.visible_sprites)
-
-    def create_magic(self, style, strength, cost):
+    def create_magic(self, entity: "Entity", style, strength, cost):
         if style == "heal":
-            self.magic_player.heal(self.player, strength, cost, [self.visible_sprites])
+            self.magic_player.heal(entity, strength, cost, [self.visible_sprites])
         if style == "flame":
             self.magic_player.flame(
-                self.player, strength, cost, [self.visible_sprites, self.attack_sprites]
+                entity, strength, cost, [self.visible_sprites, self.attack_sprites]
             )
-
-    def add_exp(self, amount):
-        self.player.exp += amount
 
     def toggle_menu(self):
         self.game_paused = not self.game_paused
 
     async def run(self):
+
+        # debugging
         self.visible_sprites.custom_draw(self.player)
         self.ui.display(self.player)
 

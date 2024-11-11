@@ -51,8 +51,6 @@ class Upgrade:
                 self.selection_time = pygame.time.get_ticks()
                 self.can_move = False
 
-        print(self.selection_index, self.can_move)
-
     def selection_cooldown(self):
         if not self.can_move:
             current_time = pygame.time.get_ticks()
@@ -62,7 +60,7 @@ class Upgrade:
     def create_items(self):
         self.item_list = []
 
-        for index, item in enumerate(range(self.attribute_nr)):
+        for index, item in enumerate(range(self.attribute_nr)): 
             # horizontal position
             full_width = self.display_surface.get_size()[0]
             increment = full_width // self.attribute_nr

@@ -22,6 +22,8 @@ class AnimationPlayer:
             "spirit": import_folder("../graphics/particles/nova"),
             "bamboo": import_folder("../graphics/particles/bamboo"),
             "player": import_folder("../graphics/particles/smoke2"),
+            "weapon": import_folder("../graphics/particles/sparkle"),
+            "magic": import_folder("../graphics/particles/sparkle"),
             # leafs
             "leaf": (
                 import_folder("../graphics/particles/leaf1"),

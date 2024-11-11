@@ -27,12 +27,12 @@ def import_folder(path):
 
 
 def get_distance_direction(A: pygame.sprite.Sprite, B: pygame.sprite.Sprite):
-    enemy_vec = pygame.math.Vector2(A.rect.center)
-    player_vec = pygame.math.Vector2(B.rect.center)
+    A_vec = pygame.math.Vector2(A.rect.center)
+    B_vec = pygame.math.Vector2(B.rect.center)
 
-    distance = (player_vec - enemy_vec).magnitude()
+    distance = (B_vec - A_vec).magnitude()
     if distance > 0:
-        direction = (player_vec - enemy_vec).normalize()
+        direction = (B_vec - A_vec).normalize()
     else:
         direction = pygame.math.Vector2()
 

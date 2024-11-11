@@ -16,9 +16,7 @@ class MemoryStream:
     def write_memory(self, memory_entry, entity: "Enemy", threshold=200):
         os.makedirs("../memory", exist_ok=True)
 
-        memories_file = (
-            f"../memory/stream_{entity.monster_name}_{entity.monster_id}.txt"
-        )
+        memories_file = f"../memory/stream_{entity.full_name}.txt"
         try:
             with open(memories_file, "r") as f:
                 lines = f.readlines()
@@ -37,7 +35,7 @@ class MemoryStream:
         self,
         entity: "Enemy",
         player: "Player",
-        entities: list["Entity"],
+        entities: list["Enemy"],
         objects: list["Tile"],
     ):
         """Logs the enemy's memory including nearby entities and objects within notice radius."""
@@ -52,7 +50,7 @@ class MemoryStream:
             f"player_location:{player.rect.centerx},{player.rect.centery},"
             f"player_distance:{player_distance:.1f},"
             f"player_health:{player_health:.1f}%,"
-            f"player_status:{player.status},"
+            f"player_action:{player.status},"
             f"player_weapon:{player.weapon},"
         )
 
@@ -64,11 +62,13 @@ class MemoryStream:
                     distance, _ = get_distance_direction(entity, other_entity)
                     if distance <= entity.notice_radius:
                         nearby_entities.append(
-                            f"(entity_{other_entity.monster_name}_{other_entity.monster_id}:("
+                            f"(entity_{other_entity.full_name}:("
                             f"location:{other_entity.rect.centerx},{other_entity.rect.centery},"
+                            f"moving_to:{int(other_entity.target_location.x)},{int(other_entity.target_location.y)},"
                             f"distance:{distance:.1f},"
                             f"health:{(other_entity.health / other_entity.max_health) * 100:.1f}%,"
-                            f"status:{other_entity.status})"
+                            f"action:{other_entity.status})"
+                            f"status:{other_entity.event_status})"
                         )
 
         # Get nearby objects within notice radius
@@ -88,17 +88,16 @@ class MemoryStream:
 
         # Combine all information
         memory_entry = (
-            f"{timestamp},"
+            f"time:{timestamp},"
             f"your_location:{location},"
-            f"your_status:{entity.status},"
+            f"your_action:{entity.status},"
+            f"your_status:{entity.event_status},"
             f"your_health:{health:.1f}%,"
             f"{player_observation}"
         )
 
-        if entity.target:
-            memory_entry += (
-                f"your_moving_to:{int(entity.target.x)},{int(entity.target.y)},"
-            )
+        if entity.target_location:
+            memory_entry += f"your_moving_to:{int(entity.target_location.x)},{int(entity.target_location.y)},"
 
         if nearby_entities:
             memory_entry += f"nearby_entities:({','.join(nearby_entities)}),"

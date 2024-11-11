@@ -1,12 +1,20 @@
 import pygame
 from os import walk
 from math import sin
+from particles import AnimationPlayer
+from magic import MagicPlayer
+
+from support import get_distance_direction
 
 
 class Entity(pygame.sprite.Sprite):
     def __init__(self, groups):
         super().__init__(groups)
+        self.groups = groups
+        # init class
+        self.animation_player = AnimationPlayer()
 
+        # params
         self.animation_speed = 0.15
         self.frame_index = 0
         self.animations = {}
@@ -20,6 +28,21 @@ class Entity(pygame.sprite.Sprite):
         # attack
         self.first_attack = False
         self.vulnerable = True
+        self.attack_type = None
+
+        # status
+        self.name = None  # expected to be set by subclass
+        self.full_name = None  # expected to be set by subclass
+
+        # sounds
+        self.death_sound = pygame.mixer.Sound("../audio/death.wav")
+        self.hit_sound = pygame.mixer.Sound("../audio/hit.wav")
+
+        self.death_sound.set_volume(0.6)
+        self.hit_sound.set_volume(0.6)
+
+        # cosmetic
+        self.text_bubble = None
 
     def hitbox_collide(
         self, sprite1: pygame.sprite.Sprite, sprite2: pygame.sprite.Sprite
@@ -43,26 +66,6 @@ class Entity(pygame.sprite.Sprite):
                     if self.direction.y < 0:  # moving up
                         self.hitbox.top = sprite.hitbox.bottom
 
-    # def collision(self, direction):
-
-    #     collided_sprites = pygame.sprite.spritecollide(
-    #         self, self.obstacle_sprites, dokill=False, collided=self.hitbox_collide
-    #     )
-    #     # collided_sprites = [sprite for sprite in collided_sprites if sprite != self]
-    #     if collided_sprites:
-    #         for sprite in collided_sprites:
-    #             if direction == "horizontal":
-    #                 if self.direction.x > 0:  # moving right
-    #                     self.hitbox.right = sprite.hitbox.left - 1
-    #                 if self.direction.x < 0:  # moving left
-    #                     self.hitbox.left = sprite.hitbox.right + 1
-    #             if direction == "vertical":
-    #                 if self.direction.y > 0:  # moving down
-    #                     self.hitbox.bottom = sprite.hitbox.top - 1
-    #                 if self.direction.y < 0:  # moving 33334
-    #                     self.hitbox.top = sprite.hitbox.bottom + 1
-    #             # self.direction.y = 0
-
     def animate(self):
         animation = self.animations[self.status]  # load animation sequence
 
@@ -72,8 +75,6 @@ class Entity(pygame.sprite.Sprite):
 
         # set the image
         self.image = animation[int(self.frame_index)]
-        
-    
 
     def import_graphics(self, main_path, name, animations):
 
@@ -90,4 +91,59 @@ class Entity(pygame.sprite.Sprite):
 
             animations[status] = surface_list
 
-    
+    def get_damage(self, attacker: "Entity"):
+
+        if self.vulnerable:
+            # save attacked event
+            self.can_save_observation = True
+            self.event_status = f"attacked by {attacker.full_name}"
+            self.vulnerable = False
+            self.hit_sound.play()
+            self.vulnerable_time = pygame.time.get_ticks()
+
+            attack_type = attacker.attack_type
+            if attacker.sprite_type == "player":
+                attack_type = attacker.attack_type
+                if attack_type == "weapon":
+                    self.health -= attacker.get_full_weapon_damage()
+                elif attack_type == "magic":
+                    self.health -= attacker.get_full_magic_damage()
+
+            else:
+                self.health -= attacker.attack_damage
+
+            # knockback
+
+            # particles
+            pos = self.rect.center
+            if attack_type:
+                self.animation_player.create_particles(
+                    attack_type, pos, [self.groups[0]]
+                )
+            if self.health <= 0:
+                self.status = "death"
+                # save death event
+
+                self.kill()
+                if self.text_bubble:
+                    self.text_bubble.kill()
+
+                self.animation_player.create_particles(
+                    self.name, self.rect.center, [self.groups[0]]
+                )
+
+                self.death_sound.play()
+                self.add_exp(attacker, self.exp)
+
+            # knockback
+            _, self.direction = get_distance_direction(self, attacker)
+            # Set target location based on knockback direction
+            knockback_distance = 200  # pixels to push back
+            knockback_speed = 5
+            self.target_location = pygame.math.Vector2(self.hitbox.center) + (
+                -self.direction.normalize() * knockback_distance
+            )
+            self.move(self.target_location, knockback_speed)
+
+    def add_exp(self, entity: "Entity", amount):
+        entity.exp += amount

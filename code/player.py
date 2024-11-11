@@ -23,6 +23,10 @@ class Player(Entity):
         super().__init__(groups)
         self.image = pygame.image.load("../graphics/test/player.png").convert_alpha()
         self.rect = self.image.get_rect(topleft=pos)
+        self.name = "player"
+        self.full_name = "player"
+
+        self.create_magic = create_magic
 
         self.hitbox = self.rect.inflate(-6, HITBOX_OFFSET["player"])
         self.sprite_type = "player"
@@ -46,7 +50,6 @@ class Player(Entity):
         }
         path = "../graphics/"
 
-        self.create_magic = create_magic
         self.import_graphics(path, "player", self.animations)
 
         # movement
@@ -109,20 +112,20 @@ class Player(Entity):
         keys = pygame.key.get_pressed()
 
         # movement
-        if keys[pygame.K_d]:
+        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             self.direction.x = 1
             self.status = "right"
-        elif keys[pygame.K_a]:
+        elif keys[pygame.K_a] or keys[pygame.K_LEFT]:
             self.direction.x = -1
             self.status = "left"
         # weapon
         else:
             self.direction.x = 0
 
-        if keys[pygame.K_s]:
+        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
             self.direction.y = 1
             self.status = "down"
-        elif keys[pygame.K_w]:
+        elif keys[pygame.K_w] or keys[pygame.K_UP]:
             self.direction.y = -1
             self.status = "up"
         else:
@@ -137,7 +140,6 @@ class Player(Entity):
             self.attacking = True
             self.attack_time = pygame.time.get_ticks()
             self.attack_type = "weapon"
-            print("attack")
 
         if keys[pygame.K_q] and self.can_switch_weapon:
             self.can_switch_weapon = False
@@ -163,8 +165,7 @@ class Player(Entity):
             cost = magic_data[style]["cost"]
 
             # create magic sprites
-            self.create_magic(style, strength, cost)
-            print("magic")
+            self.create_magic(self, style, strength, cost)
 
         if keys[pygame.K_e] and self.can_switch_magic:
             self.can_switch_magic = False
@@ -238,7 +239,7 @@ class Player(Entity):
         else:
             self.energy = self.stats["energy"]
 
-    def move(self, speed):
+    def move(self, target_location, speed):
         if self.direction.magnitude() != 0:
             if self.direction.magnitude() < 2:  # this to ignore knockback magnitude
                 self.direction = self.direction.normalize()
@@ -257,7 +258,7 @@ class Player(Entity):
         self.get_status()
         self.animate()
         self.flickering()
-        self.move(self.stats["speed"])
+        self.move(None, self.stats["speed"])
         self.energy_recovery()
         # debug(f"{self.status} {self.magic}")
         pass

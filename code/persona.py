@@ -3,7 +3,8 @@ import openai
 from openai import OpenAI  # New import
 import asyncio
 from memstream import MemoryStream
-
+import json
+import pygame
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -81,42 +82,83 @@ class Persona:
         memory = self.summary
 
         prompt = (
-            f"You are {entity.monster_name} with id{entity.monster_id} and you are {entity.characteristic} but will attack if threatened. "
+            f"You are {entity.full_name} and you are {entity.characteristic}."
             f"Using current 'observation' about the world and your 'memory' to decide what to do next. "
-            f'Decide your next location with "location":"x,y" and if you should attack the player with "attack":"yes/no" and your reason for moving in less than 5 words with "reason":"your reason". If you want to attack the player move to the player location.'
-            'Output format: {"move": "x,y", "attack": "yes/no", "reason": "your reason"}\n'
+            f'Decide your next target "target_name":"name", your next location with "location":"x,y". If you want to attack the target your next location is target location.'
+            "If you want to runaway from the target you should increase distance from target location."
+            'Finally your reason for moving in less than 5 words with "reason":"your reason".  '
+            'Output format: {"move": "x,y", "target_name":"name", "attack": "yes/no", "reason": "your reason"} \n\n'
             f"'Observation': {observation}\n"
             f"'Memory': {memory}\n"
             "Your response: "
         )
-        print(f"prompt: {prompt}\n")
+
         try:
             response = await self.api.get_response(user_input=prompt)
-            print(f"{entity.monster_name}_{entity.monster_id} decision: {response} \n")
+            print(f"prompt: {prompt}\n")
+            print(f"{entity.full_name} decision: {response} \n")
 
-            # self.memory.write_data(response, "decision", monster_id)
             self.decision = response
 
         except Exception as e:
             print(f"Error getting movement decision: {e}")
             # Keep the current direction on error
 
-    async def summary_context(self, entity: "Enemy", threshold=50):
-        memory_stream = self.memory.read_data(
-            f"stream_{entity.monster_name}_{entity.monster_id}"
+    async def summary_context(
+        self,
+        entity: "Enemy",
+        player: "Player",
+        entities: list["Enemy"],
+        objects: list["Tile"],
+        threshold=50,
+    ):
+        memory_stream = self.memory.read_data(f"stream_{entity.full_name}")
+        observation = self.memory.save_observation(entity, player, entities, objects)
+
+        prompt = (
+            f"You are {entity.full_name} and you are {entity.characteristic}."
+            f"your 'observation': {observation}\n"
+            f"your 'memory stream': {memory_stream}\n"
+            "\nDo this step by step:\n"
+            "1. Fetch the most relevance, recency, and importance records events from 'memory stream' related to your current 'observation'."
+            f"2. Summary them in less than {threshold} words."
+            f"Your summary: "
         )
-        prompt = f"Fetch important events from 'memory stream' then summary them in less than {threshold} words. \n'memory stream': {memory_stream}"
 
         try:
             response = await self.api.get_response(user_input=prompt)
-            print(f"{entity.monster_name}_{entity.monster_id} summary: {response} \n")
+            print(f"{entity.full_name} summary: {response} \n")
 
-            # self.memory.write_data(response, "summary", monster_id)
+            # self.memory.write_data(response, "summary", full_name)
             self.summary = response
 
         except (asyncio.TimeoutError, Exception) as e:
             print(f"Error getting movement decision: {e}")
             # Keep the current direction on error
+
+    def parse_decision(self, response):
+        try:
+            data = json.loads(response)
+
+            coords = data["move"].split(",")
+            if len(coords) != 2:
+                raise ValueError("Move coordinates must be in format 'x,y'")
+
+            x = float(coords[0].strip())
+            y = float(coords[1].strip())
+
+            decision = {
+                "target_location": pygame.math.Vector2(x, y),
+                "target_name": data["target_name"],
+                "reason": data["reason"],
+                "want_to_attack": data["attack"].lower() == "yes",
+            }
+
+            return decision
+
+        except (json.JSONDecodeError, ValueError, AttributeError, KeyError) as e:
+            print(f"Error parsing decision response: {e}")
+            return None
 
 
 if __name__ == "__main__":
