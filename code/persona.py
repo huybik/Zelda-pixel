@@ -84,9 +84,13 @@ class Persona:
         prompt = (
             f"You are {entity.full_name} and you are {entity.characteristic}."
             f"Using current 'observation' about the world and your 'memory' to decide what to do next. "
-            f'Decide your next target "target_name":"name", your next location with "location":"x,y". If you want to attack the target your next location is target location.'
+            "Follow the steps to decide what to do next:"
+            '1. Decide your next target "target_name":"name", '
+            '2. decide your next location with "location":"x,y". If you want to attack the target your next location is target location.'
             "If you want to runaway from the target you should increase distance from target location."
-            'Finally your reason for moving in less than 5 words with "reason":"your reason".  '
+            "If you want to if you want to help the target, you should not attack."
+            '3. Decide if you want to attack the target "attack":"yes/no", if you want to help the target you should not attack.'
+            '4. Finally your reason for your actions in less than 5 words with "reason":"your reason".  '
             'Output format: {"move": "x,y", "target_name":"name", "attack": "yes/no", "reason": "your reason"} \n\n'
             f"'Observation': {observation}\n"
             f"'Memory': {memory}\n"
@@ -121,7 +125,7 @@ class Persona:
             f"your 'memory stream': {memory_stream}\n"
             "\nDo this step by step:\n"
             "1. Fetch the most relevance, recency, and importance records events from 'memory stream' related to your current 'observation'."
-            f"2. Summary them in less than {threshold} words."
+            f"2. Summary them in less than {threshold} words so that you can understand the situation."
             f"Your summary: "
         )
 

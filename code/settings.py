@@ -88,7 +88,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 70,
         "notice_radius": 600,
-        "characteristic": "neutral but will attack if player is hostile",
+        "characteristic": "neutral but will attack if being attacked",
     },
     "raccoon": {
         "id": 392,
@@ -101,7 +101,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 120,
         "notice_radius": 600,
-        "characteristic": "will judge player's action, will attack if player is hostile to others",
+        "characteristic": "will judge player's action, will attack back if being attacked or if player is hostile to others",
     },
     "spirit": {
         "id": 391,
@@ -114,7 +114,7 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 200,
         "notice_radius": 600,
-        "characteristic": "afraid of player, will attack if player is hostile to you",
+        "characteristic": "attack player if racoon attack player",
     },
     "bamboo": {
         "id": 390,
@@ -127,6 +127,6 @@ monster_data = {
         "resistance": 3,
         "attack_radius": 70,
         "notice_radius": 600,
-        "characteristic": "friend to player unless attacked by player, will attack the one that attacked player",
+        "characteristic": "neutral, will attack playerif player attack other bamboo",
     },
 }

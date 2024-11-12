@@ -95,11 +95,12 @@ class Entity(pygame.sprite.Sprite):
 
         if self.vulnerable:
             # save attacked event
-            self.can_save_observation = True
             self.event_status = f"attacked by {attacker.full_name}"
             self.vulnerable = False
             self.hit_sound.play()
             self.vulnerable_time = pygame.time.get_ticks()
+            # save observation
+            self.can_save_observation = True
 
             attack_type = attacker.attack_type
             if attacker.sprite_type == "player":
@@ -120,20 +121,6 @@ class Entity(pygame.sprite.Sprite):
                 self.animation_player.create_particles(
                     attack_type, pos, [self.groups[0]]
                 )
-            if self.health <= 0:
-                self.status = "death"
-                # save death event
-
-                self.kill()
-                if self.text_bubble:
-                    self.text_bubble.kill()
-
-                self.animation_player.create_particles(
-                    self.name, self.rect.center, [self.groups[0]]
-                )
-
-                self.death_sound.play()
-                self.add_exp(attacker, self.exp)
 
             # knockback
             _, self.direction = get_distance_direction(self, attacker)
@@ -141,9 +128,30 @@ class Entity(pygame.sprite.Sprite):
             knockback_distance = 200  # pixels to push back
             knockback_speed = 5
             self.target_location = pygame.math.Vector2(self.hitbox.center) + (
-                -self.direction.normalize() * knockback_distance
+                -self.direction * knockback_distance
+                if self.direction.magnitude() != 0
+                else pygame.math.Vector2()
             )
             self.move(self.target_location, knockback_speed)
+
+            if self.health <= 0:
+                # self.status = "dead"
+                self.event_status = "killed by " + attacker.full_name
+                # save dead event
+                self.can_save_observation = True
+                if self.text_bubble:
+                    self.text_bubble.kill()
+
+                self.animation_player.create_particles(
+                    self.name, self.rect.center, [self.groups[0]]
+                )
+
+                self.kill()
+
+                self.death_sound.play()
+                self.add_exp(attacker, self.exp)
+
+                return "dead"
 
     def add_exp(self, entity: "Entity", amount):
         entity.exp += amount

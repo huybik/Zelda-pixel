@@ -217,15 +217,19 @@ class Enemy(Entity):
         # Execute attack if decided
         # can attack will end after attack animation
         # can attack will be set to true after cooldow
-        if self.target_name != "player":
-            print(self.target_name)
+        # if self.target_name != "player":
+        #     print(self.target_name)
 
         if self.can_attack:
             self.status = "attack"
             self.attack_time = pygame.time.get_ticks()
             self.attack_sound.play()
-            target.get_damage(attacker=self)
-            self.event_status = f"attack entity {target.full_name}"
+            status = target.get_damage(attacker=self)
+
+            if status == "dead":
+                self.event_status = f"killed {target.full_name}"
+            else:
+                self.event_status = f"attack {target.full_name}"
             self.can_save_observation = True
 
     def flickering(self):
@@ -243,7 +247,7 @@ class Enemy(Entity):
             self.text_bubble = TextBubble([self.groups[0]])
 
         if self.reason:
-            self.text_bubble.update_text(self.reason, self.rect)
+            self.text_bubble.update_text(self.full_name + ": " + self.reason, self.rect)
 
         if self.persona.decision != self.current_decision:
             self.current_decision = self.persona.decision
@@ -255,18 +259,20 @@ class Enemy(Entity):
                 self.reason = decision["reason"]
 
         # chose target
-
-        target = player
-        for entity in entities:
-            if entity != self and entity.full_name == self.target_name:
-                target = entity
-                break
-
-        distance, _ = get_distance_direction(self, target)
-        if distance <= self.attack_radius and self.want_to_attack:
-            self.attack(target)
+        target = None
+        if self.target_name == "player":
+            target = player
         else:
-            self.status = "move"
+            for entity in entities:
+                if entity != self and entity.full_name == self.target_name:
+                    target = entity
+                    break
+        if target:
+            distance, _ = get_distance_direction(self, target)
+            if distance <= self.attack_radius and self.want_to_attack:
+                self.attack(target)
+            else:
+                self.status = "move"
 
         # any_key_pressed = any(pygame.key.get_pressed())
         # if self.can_save_observation and any_key_pressed:
