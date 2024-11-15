@@ -4,9 +4,15 @@ from settings import TILESIZE, HITBOX_OFFSET
 
 class Tile(pygame.sprite.Sprite):
     def __init__(
-        self, pos, groups, sprite_type, surface=pygame.Surface((TILESIZE, TILESIZE))
+        self,
+        pos,
+        full_name,
+        groups,
+        sprite_type,
+        surface=pygame.Surface((TILESIZE, TILESIZE)),
     ):
         super().__init__(groups)
+        self.full_name = full_name
         # define image for sprite
         self.sprite_type = sprite_type
         self.image = surface

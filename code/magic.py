@@ -31,6 +31,8 @@ class MagicPlayer:
 
     def flame(self, player: "Player", strength, cost, groups):
         if player.energy >= cost:
+            player.energy -= cost
+
             # create 6 flames
             self.sounds["flame"].play()
             for i in range(1, 12):

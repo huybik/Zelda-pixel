@@ -5,6 +5,7 @@ import asyncio
 from memstream import MemoryStream
 import json
 import pygame
+from settings import default_actionable, output_format
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ class API:
             #     model=self.model, messages=self.messages
             # )
             ai_response = response.choices[0].message.content
+            # print(response.usage)
             # self.messages.append({"role": "assistant", "content": ai_response})
 
             return ai_response
@@ -73,55 +75,51 @@ class Persona:
     async def fetch_decision(
         self,
         entity: "Enemy",
-        player: "Player",
-        entities: list["Enemy"],
-        objects: list["Tile"],
     ):
 
-        observation = self.memory.save_observation(entity, player, entities, objects)
-        memory = self.summary
+        # observation = self.memory.save_observation(entity, player, entities, objects)
+        summary = self.memory.read_summary(entity)
+        observation = self.memory.read_last_observation(entity)
 
         prompt = (
-            f"You are {entity.full_name} and you are {entity.characteristic}."
-            f"Using current 'observation' about the world and your 'memory' to decide what to do next. "
-            "Follow the steps to decide what to do next:"
-            '1. Decide your next target "target_name":"name", '
-            '2. decide your next location with "location":"x,y". If you want to attack the target your next location is target location.'
-            "If you want to runaway from the target you should increase distance from target location."
-            "If you want to if you want to help the target, you should not attack."
-            '3. Decide if you want to attack the target "attack":"yes/no", if you want to help the target you should not attack.'
-            '4. Finally your reason for your actions in less than 5 words with "reason":"your reason".  '
-            'Output format: {"move": "x,y", "target_name":"name", "attack": "yes/no", "reason": "your reason"} \n\n'
+            f"Using your current 'Observation' about the world and your 'Memory', decide next step to fullfil your 'Motive' "
+            f"Output next step in format: {output_format} \n"
+            "aggression: your aggressive score from 0 to 100. "
+            f"action: attack or runaway from enemy, heal ally, mine trees. "
+            "target_name: your action should have a target, write it's name. "
+            "reason: reason for your action less than 5 words.\n "
+            f"You are {entity.full_name} and you are {entity.characteristic}.\n"
+            f"'Motive': {default_actionable}.\n"
             f"'Observation': {observation}\n"
-            f"'Memory': {memory}\n"
-            "Your response: "
+            f"'Memory': {summary}\n"
+            "Your next step: "
         )
 
         try:
             response = await self.api.get_response(user_input=prompt)
             print(f"prompt: {prompt}\n")
             print(f"{entity.full_name} decision: {response} \n")
-
-            self.decision = response
+            try:
+                data = json.loads(response)
+                self.decision = data
+            except json.JSONDecodeError:
+                print("Error load json")
 
         except Exception as e:
-            print(f"Error getting movement decision: {e}")
+            print(f"Error getting decision: {e}")
             # Keep the current direction on error
 
     async def summary_context(
         self,
         entity: "Enemy",
-        player: "Player",
-        entities: list["Enemy"],
-        objects: list["Tile"],
-        threshold=50,
+        threshold=100,
     ):
-        memory_stream = self.memory.read_data(f"stream_{entity.full_name}")
-        observation = self.memory.save_observation(entity, player, entities, objects)
+        memory_stream = self.memory.read_memory(entity)
+        observation = self.memory.read_last_observation(entity)
 
         prompt = (
             f"You are {entity.full_name} and you are {entity.characteristic}."
-            f"your 'observation': {observation}\n"
+            f"your current 'observation': {observation}\n"
             f"your 'memory stream': {memory_stream}\n"
             "\nDo this step by step:\n"
             "1. Fetch the most relevance, recency, and importance records events from 'memory stream' related to your current 'observation'."
@@ -135,34 +133,12 @@ class Persona:
 
             # self.memory.write_data(response, "summary", full_name)
             self.summary = response
+            filename = f"summary_{entity.full_name}"
+            self.memory.write_data(filename, response)
 
         except (asyncio.TimeoutError, Exception) as e:
-            print(f"Error getting movement decision: {e}")
+            print(f"Error getting summary: {e}")
             # Keep the current direction on error
-
-    def parse_decision(self, response):
-        try:
-            data = json.loads(response)
-
-            coords = data["move"].split(",")
-            if len(coords) != 2:
-                raise ValueError("Move coordinates must be in format 'x,y'")
-
-            x = float(coords[0].strip())
-            y = float(coords[1].strip())
-
-            decision = {
-                "target_location": pygame.math.Vector2(x, y),
-                "target_name": data["target_name"],
-                "reason": data["reason"],
-                "want_to_attack": data["attack"].lower() == "yes",
-            }
-
-            return decision
-
-        except (json.JSONDecodeError, ValueError, AttributeError, KeyError) as e:
-            print(f"Error parsing decision response: {e}")
-            return None
 
 
 if __name__ == "__main__":

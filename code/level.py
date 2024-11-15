@@ -66,16 +66,22 @@ class Level:
                         x = col_index * TILESIZE
                         y = row_index * TILESIZE
                         if sprite_type == "boundary":
+                            full_name = "boundary"
                             Tile(
-                                (x, y), self.obstacle_sprites, sprite_type="boundary"
+                                (x, y),
+                                full_name,
+                                self.obstacle_sprites,
+                                sprite_type="boundary",
                             )  # use default empty surfade
                         elif sprite_type == "grass":
                             surface = random.choice(graphics[sprite_type])
+                            full_name = "grass"
                             Tile(
                                 (x, y),
+                                full_name,
                                 [
                                     self.visible_sprites,
-                                    self.obstacle_sprites,
+                                    # self.obstacle_sprites,
                                     self.attackable_sprites,
                                 ],
                                 sprite_type,
@@ -83,9 +89,18 @@ class Level:
                             )
                         elif sprite_type == "object":
                             surface = graphics[sprite_type][int(col)]
+                            if int(col) <= 4 and int(col) > 1:
+                                full_name = "tree"
+                            elif int(col) > 14 and int(col) < 21:
+                                full_name = "statue"
+                            else:
+                                full_name = "object"
+
+                            full_name += f"{col_index}{row_index}"
                             self.objects.append(
                                 Tile(
                                     (x, y),
+                                    full_name,
                                     [self.visible_sprites, self.obstacle_sprites],
                                     sprite_type,
                                     surface,

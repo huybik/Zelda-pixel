@@ -6,7 +6,7 @@ from settings import weapon_data
 class Weapon(pygame.sprite.Sprite):
     def __init__(self, player: Player, groups):
         super().__init__(groups)  # init group so it get drawn
-        self.direction = player.status.split("_")[0]
+        self.direction = player.action.split("_")[0]
         self.player = player
         self.sprite_type = "weapon"
         # self.name = self.player.weapon
@@ -16,7 +16,7 @@ class Weapon(pygame.sprite.Sprite):
     def allign(self):
         weapon_path = "../graphics/weapons"
 
-        self.direction = self.player.status.split("_")[0]
+        self.direction = self.player.action.split("_")[0]
 
         if self.player.attacking and self.player.attack_type == "weapon":
             # set weapon surf attack allign with player

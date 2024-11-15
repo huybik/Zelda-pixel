@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class MemoryStream:
 
-    def write_memory(self, memory_entry, entity: "Enemy", threshold=200):
+    def write_memory(self, memory_entry, entity: "Enemy", threshold=100):
         os.makedirs("../memory", exist_ok=True)
 
         memories_file = f"../memory/stream_{entity.full_name}.txt"
@@ -31,6 +31,33 @@ class MemoryStream:
         with open(memories_file, "a") as f:
             f.write(memory_entry)
 
+    def observation_template(self, entity: "Entity", distance):
+
+        if entity.full_name == "player":
+            health = (entity.health / entity.stats["health"]) * 100
+        else:
+            health = (entity.health / entity.max_health) * 100
+
+        observation = (
+            f"name:{entity.full_name},"
+            f"new_event:{entity.event_status},"
+            f"\location:{entity.rect.centerx},{entity.rect.centery},"
+            f"previous_health:{health:.1f}%,"
+            f"previous_action:{entity.action},"
+            f"previous_reason:{entity.reason},"
+        )
+        if entity.target_location:
+            target_location = (
+                f"{int(entity.target_location.x)},{int(entity.target_location.y)},"
+            )
+            observation += f"previous_moving_to:{target_location},"
+        if entity.target_name:
+            observation += f"previous_target_name:{entity.target_name},"
+        if distance:
+            observation += f"distance: {distance},"
+
+        return f"({observation})"
+
     def save_observation(
         self,
         entity: "Enemy",
@@ -40,19 +67,6 @@ class MemoryStream:
     ):
         """Logs the enemy's memory including nearby entities and objects within notice radius."""
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-        location = f"{entity.rect.centerx},{entity.rect.centery}"
-        health = (entity.health / entity.max_health) * 100
-        player_health = (player.health / int(player.stats["health"])) * 100
-
-        # Get player observations
-        player_distance, _ = get_distance_direction(entity, player)
-        player_observation = (
-            f"player_location:{player.rect.centerx},{player.rect.centery},"
-            f"player_distance:{player_distance:.1f},"
-            f"player_health:{player_health:.1f}%,"
-            f"player_action:{player.status},"
-            f"player_weapon:{player.weapon},"
-        )
 
         # Get nearby entities within notice radius
         nearby_entities = []
@@ -62,48 +76,34 @@ class MemoryStream:
                     distance, _ = get_distance_direction(entity, other_entity)
                     if distance <= entity.notice_radius:
                         nearby_entities.append(
-                            f"(entity_{other_entity.full_name}:("
-                            f"location:{other_entity.rect.centerx},{other_entity.rect.centery},"
-                            f"moving_to:{int(other_entity.target_location.x)},{int(other_entity.target_location.y)},"
-                            f"distance:{distance:.1f},"
-                            f"health:{(other_entity.health / other_entity.max_health) * 100:.1f}%,"
-                            f"action:{other_entity.status})"
-                            f"status:{other_entity.event_status})"
+                            self.observation_template(other_entity, distance)
                         )
 
         # Get nearby objects within notice radius
         nearby_objects = []
         if objects:
             for obj in objects:
-                distance = pygame.math.Vector2(
-                    obj.rect.centerx - entity.rect.centerx,
-                    obj.rect.centery - entity.rect.centery,
-                ).magnitude()
+                distance, _ = get_distance_direction(entity, obj)
                 if distance <= entity.notice_radius:
                     nearby_objects.append(
-                        f"(object_{obj.sprite_type}"
-                        f"object_location:{obj.rect.centerx},{obj.rect.centery},"
-                        f"object_distance:{distance:.1f})"
+                        f"(name:{obj.full_name},"
+                        f"location:{obj.rect.centerx},{obj.rect.centery},"
+                        f"distance:{distance:.1f})"
                     )
 
         # Combine all information
-        memory_entry = (
-            f"time:{timestamp},"
-            f"your_location:{location},"
-            f"your_action:{entity.status},"
-            f"your_status:{entity.event_status},"
-            f"your_health:{health:.1f}%,"
-            f"{player_observation}"
+        memory_entry = timestamp + ","
+        memory_entry += (
+            f"yourself:({self.observation_template(entity, distance=None)}),"
         )
-
-        if entity.target_location:
-            memory_entry += f"your_moving_to:{int(entity.target_location.x)},{int(entity.target_location.y)},"
+        distance, _ = get_distance_direction(entity, player)
+        memory_entry += f"player:({self.observation_template(player, distance)}),"
 
         if nearby_entities:
             memory_entry += f"nearby_entities:({','.join(nearby_entities)}),"
 
-        # if nearby_objects:
-        #     memory_entry += f"nearby_objects:({','.join(nearby_objects)}),"
+        if nearby_objects:
+            memory_entry += f"nearby_objects:({','.join(nearby_objects)})"
 
         memory_entry += "\n"
 
@@ -112,7 +112,15 @@ class MemoryStream:
 
         # Keep only last 100 lines
 
-    def write_data(self, data, filename):
+    def read_last_observation(self, entity: "Entity"):
+        data = self.read_data(f"stream_{entity.full_name}")
+        if data:
+            lines = data.splitlines()
+            if lines:
+                return lines[-1]
+        return None
+
+    def write_data(self, filename, data):
         """Saves the AI's decision to a decision file."""
         os.makedirs("../memory", exist_ok=True)
         with open(f"../memory/{filename}.txt", "w") as f:
@@ -125,3 +133,9 @@ class MemoryStream:
                 return f.read()
         except FileNotFoundError:
             return None
+
+    def read_memory(self, entity: "Entity"):
+        return self.read_data(f"stream_{entity.full_name}")
+
+    def read_summary(self, entity: "Entity"):
+        return self.read_data(f"summary_{entity.full_name}")

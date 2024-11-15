@@ -33,7 +33,7 @@ class Player(Entity):
         self.attack_type = None
 
         # graphics setup˚“
-        self.status = "down"
+        self.action = "down"
         self.animations = {
             "up": [],
             "down": [],
@@ -60,8 +60,8 @@ class Player(Entity):
 
         self.weapon_index = 0
         self.weapon = list(weapon_data.keys())[self.weapon_index]
-        self.attack_cooldown = 400
-        self.attack_time = pygame.time.get_ticks()
+        self.act_cooldown = 2000
+        self.act_time = pygame.time.get_ticks()
         self.can_switch_weapon = True
         self.weapon_switch_time = None
         self.attacking = False
@@ -71,7 +71,7 @@ class Player(Entity):
         self.magic = list(magic_data.keys())[self.magic_index]
         self.can_switch_magic = True
         self.magic_switch_time = None
-        self.casting = False
+        self.can_act = False
 
         # stats
         self.stats = {"health": 100, "energy": 60, "attack": 10, "magic": 4, "speed": 5}
@@ -90,6 +90,8 @@ class Player(Entity):
             "speed": 100,
         }
         self.health = self.stats["health"] * 0.5
+        self.max_health = self.get_variable(self.stats, "health")
+
         self.energy = self.stats["energy"] * 0.8
         self.exp = 500
         # self.speed = self.stats["speed"]
@@ -108,26 +110,29 @@ class Player(Entity):
         self.weapon_attack_sound.set_volume(0.3)
         self.player_death_sound = pygame.mixer.Sound("../audio/death.wav")
 
+    def get_variable(self, dict: dict, key):
+        return dict.get(key)
+
     def input(self):
         keys = pygame.key.get_pressed()
 
         # movement
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             self.direction.x = 1
-            self.status = "right"
+            self.action = "right"
         elif keys[pygame.K_a] or keys[pygame.K_LEFT]:
             self.direction.x = -1
-            self.status = "left"
+            self.action = "left"
         # weapon
         else:
             self.direction.x = 0
 
         if keys[pygame.K_s] or keys[pygame.K_DOWN]:
             self.direction.y = 1
-            self.status = "down"
+            self.action = "down"
         elif keys[pygame.K_w] or keys[pygame.K_UP]:
             self.direction.y = -1
-            self.status = "up"
+            self.action = "up"
         else:
             self.direction.y = 0
 
@@ -138,7 +143,7 @@ class Player(Entity):
         if keys[pygame.K_SPACE] and not self.attacking:
             self.weapon_attack_sound.play()
             self.attacking = True
-            self.attack_time = pygame.time.get_ticks()
+            self.act_time = pygame.time.get_ticks()
             self.attack_type = "weapon"
 
         if keys[pygame.K_q] and self.can_switch_weapon:
@@ -156,16 +161,20 @@ class Player(Entity):
             self.damage = self.get_full_weapon_damage()
 
         # magic
-        if keys[pygame.K_LSHIFT] and not self.attacking:
-            self.attacking = True
-            self.attack_time = pygame.time.get_ticks()
+        if keys[pygame.K_LSHIFT] and self.can_act:
             self.attack_type = "magic"
             style = list(magic_data.keys())[self.magic_index]
+
             strength = self.get_full_magic_damage()
             cost = magic_data[style]["cost"]
 
             # create magic sprites
             self.create_magic(self, style, strength, cost)
+            self.can_act = False
+            self.act_time = pygame.time.get_ticks()
+
+            if style == "flame":
+                self.attacking = True
 
         if keys[pygame.K_e] and self.can_switch_magic:
             self.can_switch_magic = False
@@ -180,26 +189,29 @@ class Player(Entity):
 
     def get_status(self):
         if self.direction.x == 0 and self.direction.y == 0:
-            if "_idle" not in self.status and "_attack" not in self.status:
-                self.status += "_idle"
+            if "_idle" not in self.action and "_attack" not in self.action:
+                self.action += "_idle"
         if self.attacking:
-            if "_attack" not in self.status:
-                if "_idle" not in self.status:
-                    self.status += "_attack"
+            if "_attack" not in self.action:
+                if "_idle" not in self.action:
+                    self.action += "_attack"
                 else:
-                    self.status = self.status.replace("_idle", "_attack")
+                    self.action = self.action.replace("_idle", "_attack")
         else:
-            if "_attack" in self.status:
-                self.status = self.status.replace("_attack", "")
+            if "_attack" in self.action:
+                self.action = self.action.replace("_attack", "")
 
     def cooldowns(self):
         current_time = pygame.time.get_ticks()
 
         if (
-            current_time - self.attack_time
-            > self.attack_cooldown + weapon_data[self.weapon]["cooldown"]
+            current_time - self.act_time
+            > self.act_cooldown + weapon_data[self.weapon]["cooldown"]
         ):
             self.attacking = False
+
+        if current_time - self.act_time > self.act_cooldown:
+            self.can_act = True
 
         if not self.can_switch_weapon:
             if current_time - self.weapon_switch_time >= self.switch_duration_cooldown:
@@ -253,6 +265,7 @@ class Player(Entity):
             self.rect.center = self.hitbox.center
 
     def update(self):
+        self.animate_sequence = self.action
         self.input()
         self.cooldowns()
         self.get_status()
@@ -260,5 +273,5 @@ class Player(Entity):
         self.flickering()
         self.move(None, self.stats["speed"])
         self.energy_recovery()
-        # debug(f"{self.status} {self.magic}")
+        # debug(f"{self.action} {self.magic}")
         pass

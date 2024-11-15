@@ -3,7 +3,7 @@ from os import walk
 from math import sin
 from particles import AnimationPlayer
 from magic import MagicPlayer
-
+from tooltips import StatusBars
 from support import get_distance_direction
 
 
@@ -33,6 +33,17 @@ class Entity(pygame.sprite.Sprite):
         # status
         self.name = None  # expected to be set by subclass
         self.full_name = None  # expected to be set by subclass
+        self.target_location = None
+        self.target_name = None
+
+        self.event_status = None
+        self.reason = None
+
+        # stats
+        self.health = None
+        self.max_health = None
+        self.energy = None
+        self.max_energy = None
 
         # sounds
         self.death_sound = pygame.mixer.Sound("../audio/death.wav")
@@ -43,6 +54,10 @@ class Entity(pygame.sprite.Sprite):
 
         # cosmetic
         self.text_bubble = None
+        self.status_bars = None
+
+        # others
+        self.animate_sequence = "idle"
 
     def hitbox_collide(
         self, sprite1: pygame.sprite.Sprite, sprite2: pygame.sprite.Sprite
@@ -67,7 +82,7 @@ class Entity(pygame.sprite.Sprite):
                         self.hitbox.top = sprite.hitbox.bottom
 
     def animate(self):
-        animation = self.animations[self.status]  # load animation sequence
+        animation = self.animations[self.animate_sequence]  # load animation sequence
 
         self.frame_index += self.animation_speed
         if self.frame_index >= len(animation):
@@ -123,20 +138,21 @@ class Entity(pygame.sprite.Sprite):
                 )
 
             # knockback
-            _, self.direction = get_distance_direction(self, attacker)
+            _, direction = get_distance_direction(self, attacker)
             # Set target location based on knockback direction
             knockback_distance = 200  # pixels to push back
             knockback_speed = 5
-            self.target_location = pygame.math.Vector2(self.hitbox.center) + (
-                -self.direction * knockback_distance
-                if self.direction.magnitude() != 0
+            self.target_location = pygame.math.Vector2(self.hitbox.center) - (
+                direction * knockback_distance
+                if direction.magnitude() != 0
                 else pygame.math.Vector2()
             )
             self.move(self.target_location, knockback_speed)
 
             if self.health <= 0:
-                # self.status = "dead"
+                # self.action = "dead"
                 self.event_status = "killed by " + attacker.full_name
+                attacker.event_status = f"killed {self.full_name}"
                 # save dead event
                 self.can_save_observation = True
                 if self.text_bubble:
@@ -147,11 +163,13 @@ class Entity(pygame.sprite.Sprite):
                 )
 
                 self.kill()
+                if self.status_bars:
+                    self.status_bars.kill()
+                if self.text_bubble:
+                    self.text_bubble.kill()
 
                 self.death_sound.play()
                 self.add_exp(attacker, self.exp)
-
-                return "dead"
 
     def add_exp(self, entity: "Entity", amount):
         entity.exp += amount

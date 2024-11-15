@@ -27,8 +27,8 @@ def import_folder(path):
 
 
 def get_distance_direction(A: pygame.sprite.Sprite, B: pygame.sprite.Sprite):
-    A_vec = pygame.math.Vector2(A.rect.center)
-    B_vec = pygame.math.Vector2(B.rect.center)
+    A_vec = pygame.math.Vector2(A.hitbox.center)
+    B_vec = pygame.math.Vector2(B.hitbox.center)
 
     distance = (B_vec - A_vec).magnitude()
     if distance > 0:
