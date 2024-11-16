@@ -60,7 +60,7 @@ class Player(Entity):
 
         self.weapon_index = 0
         self.weapon = list(weapon_data.keys())[self.weapon_index]
-        self.act_cooldown = 2000
+        self.act_cooldown = 400
         self.act_time = pygame.time.get_ticks()
         self.can_switch_weapon = True
         self.weapon_switch_time = None
@@ -90,9 +90,11 @@ class Player(Entity):
             "speed": 100,
         }
         self.health = self.stats["health"] * 0.5
-        self.max_health = self.get_variable(self.stats, "health")
+        self.max_health = self.stats["health"]
 
         self.energy = self.stats["energy"] * 0.8
+        self.max_energy = self.stats["health"]
+        # todo : change enemy to use dictionary for max value
         self.exp = 500
         # self.speed = self.stats["speed"]
         self.knockback = weapon_data[self.weapon][

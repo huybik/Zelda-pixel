@@ -88,7 +88,7 @@ monster_data = {
         "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
-        "characteristic": "help player to attack other enemies that are not squids",
+        "characteristic": "player friend",
     },
     "raccoon": {
         "id": 392,
@@ -101,7 +101,7 @@ monster_data = {
         "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
-        "characteristic": "will judge player's action, will attack back if being attacked or if player is hostile to others",
+        "characteristic": "aggressive",
     },
     "spirit": {
         "id": 391,
@@ -114,7 +114,7 @@ monster_data = {
         "resistance": 3,
         "act_radius": 200,
         "notice_radius": 600,
-        "characteristic": "attack player if racoon attack player",
+        "characteristic": "neutral",
     },
     "bamboo": {
         "id": 390,
@@ -127,7 +127,7 @@ monster_data = {
         "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
-        "characteristic": "neutral",
+        "characteristic": "aggressive",
     },
 }
 

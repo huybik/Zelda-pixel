@@ -9,6 +9,7 @@ import asyncio
 from persona import Persona
 from memstream import MemoryStream
 from support import get_distance_direction, wave_value
+import random
 
 from typing import TYPE_CHECKING
 
@@ -49,14 +50,15 @@ class Enemy(Entity):
             "runaway": [],
         }
         self.import_graphics(path, name, self.animations)
-        self.text_bubble = None
 
         self.action = "idle"
         self.image = self.animations[self.action][self.frame_index]
         self.rect = self.image.get_rect(topleft=pos)
 
-        # movement
         self.hitbox = self.rect
+        self.starting_point = pos
+
+        # movement
         self.obstacle_sprites = obstacle_sprites
         self.target_location = pygame.math.Vector2()
         self.current_speed = 0
@@ -64,6 +66,8 @@ class Enemy(Entity):
         # stats
         self.name = name
         monster_info = monster_data[self.name]
+        self.monster_info = monster_info
+
         self.health = monster_info["health"]
         self.max_health = monster_info["health"]
         self.exp = monster_info["exp"]
@@ -122,6 +126,11 @@ class Enemy(Entity):
         self.upgrade_cost = 100
         self.upgrade_percentage = 0.05  # this increase cost and stat
 
+        self.text_bubble = TextBubble([self.groups[0]])
+        self.status_bars = StatusBars(
+            self.groups[0], (self.rect.centerx, self.rect.centery)
+        )
+
     def cooldown(self):
         # this cooldown to prevent attack animation spam
         current_time = pygame.time.get_ticks()
@@ -141,7 +150,7 @@ class Enemy(Entity):
         if self.frame_index >= len(animation):
             self.frame_index = 0
             if self.animate_sequence == self.action:
-                self.can_act = False
+                # self.can_act = False
                 self.animate_sequence = "move"
         self.image = animation[int(self.frame_index)]
 
@@ -199,16 +208,16 @@ class Enemy(Entity):
                     self.stuck_time = 0
             self.last_position = current
 
-            # Gradual speed adjustment
-            base_speed = speed
-            if self.check_collision(self.hitbox):
-                self.current_speed = (
-                    getattr(self, "current_speed", base_speed) * 0.95
-                )  # Gradual slowdown
-            else:
-                self.current_speed = min(
-                    base_speed, getattr(self, "current_speed", base_speed) * 1.05
-                )  # Gradual speedup
+        # Gradual speed adjustment
+        base_speed = speed
+        if self.check_collision(self.hitbox):
+            self.current_speed = (
+                getattr(self, "current_speed", base_speed) * 0.95
+            )  # Gradual slowdown
+        else:
+            self.current_speed = min(
+                base_speed, getattr(self, "current_speed", base_speed) * 1.05
+            )  # Gradual speedup
 
         # Apply movement
         if self.current_speed > 0:
@@ -246,44 +255,56 @@ class Enemy(Entity):
 
     def attack(self, target: "Entity"):
         # set event name
-
         self.attack_sound.play()
         if target.sprite_type == "player" or target.sprite_type == "enemy":
             target.get_damage(attacker=self)
 
     def heal(self, target: "Entity"):
-        if self.energy > 0:
+        if self.energy > 0 and target.health < target.max_health:
             self.heal_sound.play()
 
             # action
             self.energy -= self.attack_damage
-            target.health += self.attack_damage
-            if target.health > target.max_health:
-                target.health = target.max_health
+            if self.energy < 0:
+                self.energy = 0
 
-            self.animation_player.create_particles(
-                "heal", target.rect.center, [self.groups[0]]
-            )
+            target.get_heal(healer=self)
 
     def mine(self, target: "Tile"):
-        self.can_act = False
 
         # save status
         # action
         if self.energy < self.max_energy:
             self.energy += int(0.05 * self.max_energy)
+            if self.energy > self.max_energy:
+                self.energy = self.max_energy
         if self.health < self.max_health:
             self.health += int(0.05 * self.max_health)
+            if self.health > self.max_health:
+                self.health = self.max_health
 
         self.animation_player.create_particles(
             "sparkle", target.hitbox.center, [self.groups[0]]
         )
         self.exp += 10
 
+    def respawn(self):
+        self.rect.topleft = self.starting_point
+        self.hitbox = self.rect
+        self.health = self.monster_info["health"]
+        self.max_health = self.monster_info["health"]
+        self.exp = self.monster_info["exp"]
+        self.speed = self.monster_info["speed"]
+        self.attack_damage = self.monster_info["damage"]
+
+        self.energy = self.max_health
+        self.max_energy = self.max_health
+        self.vulnerable = False
+
     def upgrade(self):
         if self.exp >= self.upgrade_cost:
             # self.exp -= self.upgrade_cost
-            self.upgrade_cost = int(self.upgrade_cost * (1 + self.upgrade_percentage))
+            self.upgrade_cost += int(self.upgrade_cost * (1 + self.upgrade_percentage))
             self.max_health = int(self.max_health * (1 + self.upgrade_percentage))
             self.max_energy = int(self.max_energy * (1 + self.upgrade_percentage))
             self.speed = int(self.speed * (1 + self.upgrade_percentage))
@@ -302,62 +323,52 @@ class Enemy(Entity):
             self.action = decision["action"]
             self.reason = decision["reason"]
 
+            # self.target_name = "player"
+            # self.action = "runaway"
+
     def interaction(
         self, player: "Player", entities: list["Entity"], objects: list["Tile"]
     ):
-        if not self.text_bubble:
-            self.text_bubble = TextBubble([self.groups[0]])
-        if not self.status_bars:
-            self.status_bars = StatusBars(
-                self.groups[0], (self.rect.centerx, self.rect.centery)
-            )
-        self.status_bars.update_rect(
-            self  # Max energy (if you want to add energy system later)
-        )
-
-        if self.reason:
-            self.text_bubble.update_text(
-                f"{self.full_name}:{self.action} {self.reason}", self.rect
-            )
 
         if self.persona.decision != self.current_decision:
             self.set_decision(self.persona.decision)
             self.current_decision = self.persona.decision
 
-        target = self.target_select(player, entities, objects)
-        if target:
-            distance, _ = get_distance_direction(self, target)
-            if distance <= self.act_radius and self.can_act:
-                if self.action == "attack":
-                    self.attack(target)
-                elif self.action == "heal":
-                    self.heal(target)
-                elif self.action == "mine":
-                    self.mine(target)
+        else:
+            target = self.target_select(player, entities, objects)
+            if target:
+                distance, _ = get_distance_direction(self, target)
+                if distance <= self.act_radius and self.can_act:
 
-                self.animate_sequence = self.action
-                self.act_time = pygame.time.get_ticks()
+                    if self.action == "attack":
+                        self.attack(target)
+                    elif self.action == "heal":
+                        self.heal(target)
+                    elif self.action == "mine":
+                        self.mine(target)
+                    elif self.action == "runaway":
+                        self.runaway(target)
 
-                event_status = f"{self.action} {target.full_name}"
+                    self.can_act = False
+                    self.animate_sequence = self.action
+                    self.act_time = pygame.time.get_ticks()
 
-                if self.event_status != event_status:
-                    self.event_status = event_status
-                    self.can_save_observation = True
+                    event_status = f"{self.action} {target.full_name}"
 
-            current_time = pygame.time.get_ticks()
-            if (
-                current_time - self.last_internal_move_update
-                >= self.internal_move_update_interval
-            ):
-                self.internal_move_update(target)
-                self.last_internal_move_update = current_time
+                    if self.event_status != event_status:
+                        self.event_status = event_status
+                        self.can_save_observation = True
+
+                current_time = pygame.time.get_ticks()
+                if (
+                    current_time - self.last_internal_move_update
+                    >= self.internal_move_update_interval
+                ):
+                    self.internal_move_update(target)
+                    self.last_internal_move_update = current_time
 
         # any_key_pressed = any(pygame.key.get_pressed())
         # if self.can_save_observation and any_key_pressed:
-        if self.can_save_observation:
-            self.memory.save_observation(self, player, entities, objects)
-            self.observation_time = pygame.time.get_ticks()
-            self.can_save_observation = False
 
     def target_select(
         self, player: "Player", entities: list["Entity"], objects: list["Tile"]
@@ -399,34 +410,61 @@ class Enemy(Entity):
         if distance > self.notice_radius:
             self.action = "idle"
             self.direction = pygame.math.Vector2()
+            self.target_name = None
 
-            if self.text_bubble:
-                self.text_bubble.kill()
-                self.text_bubble = None
-            if self.status_bars:
-                self.status_bars.kill()
-                self.status_bars = None
+            # if self.text_bubble:
+            #     self.text_bubble.kill()
+            #     self.text_bubble = None
+            # if self.status_bars:
+            #     self.status_bars.kill()
+            #     self.status_bars = None
 
         else:
             self.interaction(player, entities, objects)
 
+        self.status_bars.update_rect(
+            self  # Max energy (if you want to add energy system later)
+        )
+
+        if self.reason:
+            self.text_bubble.update_text(
+                f"{self.full_name}:{self.action} {self.reason}", self.rect
+            )
+
+        # save observation
+        if self.can_save_observation:
+            self.memory.save_observation(self, player, entities, objects)
+            self.observation_time = pygame.time.get_ticks()
+            self.can_save_observation = False
+
+        # wander arround if no target
+        if not self.target_name or self.target_name == "None":
+            # walk aimlessly for a bit to find new target
+            self.target_location = pygame.math.Vector2(
+                random.randint(0, 800),  # Assuming the game screen width is 800
+                random.randint(0, 600),  # Assuming the game screen height is 600
+            )
         # Update status bars
 
+    def runaway(self, target):
+        pass
+
     def internal_move_update(self, target: "Entity"):
+
         if self.vulnerable:  # avoid moving when knockback in effect
             if self.action == "runaway":
-                self.target_location = None
-                _, direction = get_distance_direction(self, target)
-                if direction.magnitude() > 0:
-                    self.target_location = (
-                        self.hitbox.center - direction.magnitude() * self.speed
-                    )
+                distance, direction = get_distance_direction(self, target)
+
+                self.direction = -direction.normalize()
+                self.target_location = pygame.math.Vector2()
             elif (
                 self.action == "attack"
                 or self.action == "mine"
                 or self.action == "heal"
             ):
-                self.target_location = pygame.math.Vector2(target.rect.center)
+                self.target_location = pygame.math.Vector2(
+                    target.hitbox.center
+                ) + pygame.math.Vector2(random.randint(-3, 3), random.randint(-3, 3))
 
     async def enemy_decision(self, player, entities, objects):
         try:

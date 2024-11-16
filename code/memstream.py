@@ -33,16 +33,19 @@ class MemoryStream:
 
     def observation_template(self, entity: "Entity", distance):
 
-        if entity.full_name == "player":
+        if entity.sprite_type == "player":
             health = (entity.health / entity.stats["health"]) * 100
-        else:
+            energy = (entity.energy / entity.stats["energy"]) * 100
+        elif entity.sprite_type == "enemy":
             health = (entity.health / entity.max_health) * 100
+            energy = (entity.energy / entity.max_energy) * 100
 
         observation = (
             f"name:{entity.full_name},"
             f"new_event:{entity.event_status},"
             f"\location:{entity.rect.centerx},{entity.rect.centery},"
-            f"previous_health:{health:.1f}%,"
+            f"previous_health:{int(health)}%,"
+            f"previous_energy:{int(energy)}%,"
             f"previous_action:{entity.action},"
             f"previous_reason:{entity.reason},"
         )
@@ -118,6 +121,18 @@ class MemoryStream:
             lines = data.splitlines()
             if lines:
                 return lines[-1]
+        return None
+
+    def read_last_n_observations(self, entity: "Entity", n):
+        data = self.read_data(f"stream_{entity.full_name}")
+        if data:
+            lines = data.splitlines()
+            if len(lines) >= n:
+                # return n lines with /n in between
+                return "\n".join(lines[-n:])
+            else:
+                # return all lines with /n in between
+                return "\n".join(lines)
         return None
 
     def write_data(self, filename, data):

@@ -18,6 +18,7 @@ class Entity(pygame.sprite.Sprite):
         self.animation_speed = 0.15
         self.frame_index = 0
         self.animations = {}
+        self.sprite_type = None
 
         self.main_path = ""
 
@@ -151,25 +152,40 @@ class Entity(pygame.sprite.Sprite):
 
             if self.health <= 0:
                 # self.action = "dead"
-                self.event_status = "killed by " + attacker.full_name
+                self.event_status = "dead, killed by " + attacker.full_name
                 attacker.event_status = f"killed {self.full_name}"
                 # save dead event
                 self.can_save_observation = True
-                if self.text_bubble:
-                    self.text_bubble.kill()
 
                 self.animation_player.create_particles(
                     self.name, self.rect.center, [self.groups[0]]
                 )
 
-                self.kill()
-                if self.status_bars:
-                    self.status_bars.kill()
-                if self.text_bubble:
-                    self.text_bubble.kill()
+                if self.sprite_type == "enemy":
+                    self.respawn()
+                # if self.status_bars:
+                #     self.status_bars.kill()
+                # if self.text_bubble:
+                #     self.text_bubble.kill()
 
                 self.death_sound.play()
                 self.add_exp(attacker, self.exp)
+                return True
+
+    def get_heal(self, healer: "Entity"):
+        self.health += healer.attack_damage
+        if self.health > self.max_health:
+            self.health = self.max_health
+
+        self.animation_player.create_particles(
+            "heal", self.hitbox.center, [self.groups[0]]
+        )
+
+        self.event_status = f"healed by {healer.full_name}"
+        self.can_save_observation = True
 
     def add_exp(self, entity: "Entity", amount):
         entity.exp += amount
+
+    def respawn(self):
+        pass

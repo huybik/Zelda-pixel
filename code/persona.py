@@ -79,19 +79,19 @@ class Persona:
 
         # observation = self.memory.save_observation(entity, player, entities, objects)
         summary = self.memory.read_summary(entity)
-        observation = self.memory.read_last_observation(entity)
+        observation = self.memory.read_last_n_observations(entity, 3)
 
         prompt = (
-            f"Using your current 'Observation' about the world and your 'Memory', decide next step to fullfil your 'Motive' "
-            f"Output next step in format: {output_format} \n"
+            f"Using your last 'Observation' about the world and your 'Memory', decide next step to fullfil your 'Motive' "
             "aggression: your aggressive score from 0 to 100. "
             f"action: attack or runaway from enemy, heal ally, mine trees. "
-            "target_name: your action should have a target, write it's name. "
+            "target_name: your action need a target, write it's name. or 'None' if you cant find your target"
             "reason: reason for your action less than 5 words.\n "
             f"You are {entity.full_name} and you are {entity.characteristic}.\n"
             f"'Motive': {default_actionable}.\n"
             f"'Observation': {observation}\n"
             f"'Memory': {summary}\n"
+            f"Output next step in format: {output_format} \n"
             "Your next step: "
         )
 
@@ -115,7 +115,7 @@ class Persona:
         threshold=100,
     ):
         memory_stream = self.memory.read_memory(entity)
-        observation = self.memory.read_last_observation(entity)
+        observation = self.memory.read_last_n_observations(entity, 3)
 
         prompt = (
             f"You are {entity.full_name} and you are {entity.characteristic}."
