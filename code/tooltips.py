@@ -5,7 +5,7 @@ from settings import UI_FONT, UI_FONT_SIZE, TEXT_COLOR, UI_BG_COLOR, UI_BORDER_C
 class TextBubble(pygame.sprite.Sprite):
     def __init__(self, groups):
         super().__init__(groups)
-        self.font = pygame.font.Font(UI_FONT, 16)
+        self.font = pygame.font.Font(UI_FONT, 15)
         self.padding = 10
         self.border_width = 2
         self.offset_y = -10  # Offset above the enemy
@@ -65,19 +65,16 @@ class TextBubble(pygame.sprite.Sprite):
 
 
 class StatusBars(pygame.sprite.Sprite):
-    def __init__(
-        self, groups, pos, size=(70, 5), border_color=(60, 60, 60), border_width=2
-    ):
+    def __init__(self, groups, size=(70, 5), border_color=(60, 60, 60), border_width=2):
         super().__init__(groups)
         self.size = size
         self.border_color = border_color
         self.border_width = border_width
-        self.pos = pos
 
         # Create surface and rect
         total_height = size[1] * 2 + 20  # Height for both bars plus gap
         self.image = pygame.Surface((200, total_height), pygame.SRCALPHA)
-        self.rect = self.image.get_rect(topleft=pos)
+        self.rect = self.image.get_rect()
 
         # Create rects for health and energy bars relative to surface
         self.health_rect = pygame.Rect(0, 0, size[0], size[1])

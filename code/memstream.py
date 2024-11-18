@@ -43,11 +43,17 @@ class MemoryStream:
         observation = (
             f"name:{entity.full_name},"
             f"new_event:{entity.event_status},"
-            f"\location:{entity.rect.centerx},{entity.rect.centery},"
-            f"previous_health:{int(health)}%,"
-            f"previous_energy:{int(energy)}%,"
             f"previous_action:{entity.action},"
-            f"previous_reason:{entity.reason},"
+            f"\location:{entity.rect.centerx},{entity.rect.centery},"
+            f"health_percentage:{int(health)}%,"
+            f"energy_percentage:{int(energy)}%,"
+            f"reason:{entity.reason},"
+            f"max_health:{int(entity.max_health)},"
+            f"max_energy:{int(entity.max_energy)},"
+            f"damage:{int(entity.attack_damage)},"
+            f"speed:{int(entity.speed)},"
+            f"experience:{int(entity.exp)},"
+            f"level:{int(entity.lvl)},"
         )
         if entity.target_location:
             target_location = (

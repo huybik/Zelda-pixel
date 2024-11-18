@@ -45,6 +45,10 @@ class Entity(pygame.sprite.Sprite):
         self.max_health = None
         self.energy = None
         self.max_energy = None
+        self.lvl = 1
+        self.attack_damage = 0
+        self.speed = 0
+        self.exp = 0
 
         # sounds
         self.death_sound = pygame.mixer.Sound("../audio/death.wav")

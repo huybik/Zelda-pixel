@@ -96,7 +96,11 @@ class Player(Entity):
         self.max_energy = self.stats["health"]
         # todo : change enemy to use dictionary for max value
         self.exp = 500
-        # self.speed = self.stats["speed"]
+
+        # todo: set this dynamic
+        self.speed = self.stats["speed"]
+        self.attack_damage = self.get_full_weapon_damage()
+
         self.knockback = weapon_data[self.weapon][
             "damage"
         ]  # just use damage as knockback

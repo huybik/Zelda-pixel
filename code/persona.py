@@ -84,8 +84,8 @@ class Persona:
         prompt = (
             f"Using your last 'Observation' about the world and your 'Memory', decide next step to fullfil your 'Motive' "
             "aggression: your aggressive score from 0 to 100. "
-            f"action: attack or runaway from enemy, heal ally, mine trees. "
-            "target_name: your action need a target, write it's name. or 'None' if you cant find your target"
+            f"action: attack or runaway from enemy, heal ally which cost energy, or mine trees. "
+            "target_name: your action need a target, write it's name. write 'None' if you cant find your target"
             "reason: reason for your action less than 5 words.\n "
             f"You are {entity.full_name} and you are {entity.characteristic}.\n"
             f"'Motive': {default_actionable}.\n"

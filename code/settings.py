@@ -84,7 +84,7 @@ monster_data = {
         "damage": 20,
         "attack_type": "slash",
         "attack_sound": "../audio/attack/slash.wav",
-        "speed": 3,
+        "speed": 2,
         "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
@@ -110,7 +110,7 @@ monster_data = {
         "damage": 8,
         "attack_type": "thunder",
         "attack_sound": "../audio/attack/fireball.wav",
-        "speed": 3,
+        "speed": 2,
         "resistance": 3,
         "act_radius": 200,
         "notice_radius": 600,
@@ -123,14 +123,14 @@ monster_data = {
         "damage": 6,
         "attack_type": "leaf_attack",
         "attack_sound": "../audio/attack/slash.wav",
-        "speed": 3,
+        "speed": 2,
         "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
-        "characteristic": "aggressive",
+        "characteristic": "prefer mining",
     },
 }
 
-default_actionable = "your priority is to survive using all actions you have at your posession. When you attack and kill an enemy you gain its exp. When you mine you gain back lost hp and some exp. You will be upgraded for every 100 exp."
+default_actionable = "your priority is to survive using all actions you have at your posession. When you attack and kill an enemy you gain its exp. When you mine you gain back lost hp and energy and some exp. You will be upgraded for every 100 exp."
 
 output_format = '{"target_name": "name/None","action": "attack/runaway/heal/mine","aggression": "0-100","reason": "your reason"}'

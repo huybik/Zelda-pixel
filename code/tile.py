@@ -19,7 +19,9 @@ class Tile(pygame.sprite.Sprite):
         # define rect position for sprite
         if sprite_type == "object":
             # minus object size
-            self.rect = self.image.get_rect(topleft=(pos[0], pos[1] - TILESIZE))
+            self.rect = self.image.get_rect(
+                topleft=(pos[0] - TILESIZE, pos[1] - TILESIZE)
+            )
             self.hitbox = self.rect.inflate(0, HITBOX_OFFSET["object"])
         else:  # invisible and grass
             self.rect = self.image.get_rect(topleft=pos)
