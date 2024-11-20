@@ -14,35 +14,64 @@ if TYPE_CHECKING:
     from tile import Tile
 
 
+from llama_cpp import Llama
+
+
+
+
 class API:
-    def __init__(self):
-        self.model = "gpt-4o-mini"  # Using GPT-4 Mini model
-        self.messages = []
-        self.client = None  # Add client property
-        self.load_api_key()
+    def __init__(self, mode: str = "local"):
+        self.system_prompt = """You are an smart being that like to plan your action"""
+        self.mode = mode
+        if self.mode == "local":
+            self.client = Llama(model_path="../model/qwen2.5-0.5b-q4_0.gguf",
+            n_ctx=2048,
+            # use_mlock=False,
+            verbose=False
+            )
+        else:
+            
+            self.model = "gpt-4o-mini"  # Using GPT-4 Mini model
+            self.client = None  # Add client property
+            self.load_api_key()
+            
 
     async def get_response(self, user_input, system_prompt=None):
-        if system_prompt and not self.messages:
-            # Add system prompt at the start of conversation
-            # self.messages.append({"role": "system", "content": system_prompt})
-            pass
-
+        if not system_prompt:
+            system_prompt = self.system_prompt
+        
+        messages=[
+        {'role': 'system', 'content': system_prompt},
+        {'role': 'user', 'content': user_input}
+        ]
+        
         try:
             loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
+            
+            if self.mode == "local":
+                
+                ai_response = response.choices[0].message.content
+                response = await loop.run_in_executor(
                 None,  # None uses the default executor
-                lambda: self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": user_input}],
-                ),
-            )
-            # response = self.client.chat.completions.create(
-            #     model=self.model, messages=self.messages
-            # )
-            ai_response = response.choices[0].message.content
-            # print(response.usage)
-            # self.messages.append({"role": "assistant", "content": ai_response})
+                lambda: self.client.create_chat_completion(
+                    messages=messages,
+                    temperature=0,
+                    max_tokens=128,
+                    repeat_penalty=1.5,
+                    )
+                )
+                ai_response = response["choices"][0]["message"]["content"].strip()
+            else:
+                response = await loop.run_in_executor(
+                    None,  # None uses the default executor
+                    lambda: self.client.chat.completions.create(
+                        model=self.model,
+                        messages=[{"role": "user", "content": user_input}],
+                    ),
+                )
 
+            print(ai_response)
+            
             return ai_response
 
         except Exception as e:
@@ -50,21 +79,23 @@ class API:
             return "I'm having trouble connecting right now."
 
     def load_api_key(self):
+        import os
+
         try:
-            with open("../openai-key.txt", "r") as file:
-                api_key = file.read().strip()
+            api_key = os.getenv("OPENAI_API_KEY")
+            if api_key:
                 self.client = OpenAI(api_key=api_key)  # Initialize client with API key
-        except FileNotFoundError:
-            print("Error: openai-key.txt file not found")
-            return None
+            else:
+                print("Error: OPENAI_API_KEY not found in environment variables")
+                return None
         except Exception as e:
             print(f"Error loading API key: {e}")
             return None
 
 
 class Persona:
-    def __init__(self):
-        self.api = API()
+    def __init__(self, api):
+        self.api = api
         self.memory = MemoryStream()
 
         self.decision = None
@@ -88,17 +119,17 @@ class Persona:
             "target_name: your action need a target, write it's name. write 'None' if you cant find your target"
             "reason: reason for your action less than 5 words.\n "
             f"You are {entity.full_name} and you are {entity.characteristic}.\n"
-            f"'Motive': {default_actionable}.\n"
-            f"'Observation': {observation}\n"
-            f"'Memory': {summary}\n"
-            f"Output next step in format: {output_format} \n"
-            "Your next step: "
+            f"'Motive' \n{default_actionable}.\n"
+            f"'Observation' \n{observation}\n"
+            f"'Memory' \n{summary}\n"
+            f"Response with 'next step', example: {output_format} \n\n"
+            "Your 'next step':"
         )
 
         try:
             response = await self.api.get_response(user_input=prompt)
-            print(f"prompt: {prompt}\n")
-            print(f"{entity.full_name} decision: {response} \n")
+            # print(f"prompt: {prompt}\n")
+            # print(f"{entity.full_name} decision: {response} \n")
             try:
                 data = json.loads(response)
                 self.decision = data
@@ -114,8 +145,9 @@ class Persona:
         entity: "Enemy",
         threshold=100,
     ):
-        memory_stream = self.memory.read_memory(entity)
-        observation = self.memory.read_last_n_observations(entity, 3)
+        # memory_stream = self.memory.read_memory(entity)
+        memory_stream = self.memory.read_last_n_observations(entity, 5)
+        observation = self.memory.read_last_n_observations(entity, 1)
 
         prompt = (
             f"You are {entity.full_name} and you are {entity.characteristic}."

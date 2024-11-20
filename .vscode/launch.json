@@ -10,6 +10,7 @@
             "request": "launch",
             // "program": "${file}",
             "program": "main.py",
+            "pythonPath":"/Users/huy/Library/Caches/pypoetry/virtualenvs/zelda-soul-KN8jmCYC-py3.12/bin/python",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
         }

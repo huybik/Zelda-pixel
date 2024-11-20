@@ -14,9 +14,7 @@ from particles import AnimationPlayer
 from upgrade import Upgrade
 from camera import YSortCameraGroup
 from magic import MagicPlayer
-
-# import pygame_asyncio  # You'll need to install this package
-
+from persona import API
 
 class Level:
     def __init__(self) -> None:
@@ -34,6 +32,7 @@ class Level:
 
         # user interface
         self.ui = UI()
+        self.api = API(mode="online")
         # self.text_bubble = TextBubble()
 
         # sprite setup
@@ -135,6 +134,8 @@ class Level:
                                             self.attackable_sprites,
                                         ],
                                         self.obstacle_sprites,
+                                        self.visible_sprites,
+                                        self.api,
                                     )
                                 )
 

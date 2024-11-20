@@ -32,6 +32,8 @@ class Enemy(Entity):
         pos,
         groups,
         obstacle_sprites,
+        visible_sprite,
+        api
     ):
 
         # general setup
@@ -39,7 +41,7 @@ class Enemy(Entity):
         self.sprite_type = "enemy"
         self.groups = groups
         self.memory = MemoryStream()
-        self.persona = Persona()
+        self.persona = Persona(api)
 
         # graphic setup
         path = "../graphics/monsters/"
@@ -62,6 +64,7 @@ class Enemy(Entity):
 
         # movement
         self.obstacle_sprites = obstacle_sprites
+        self.visible_sprite = visible_sprite
         self.target_location = pygame.math.Vector2()
         self.current_speed = 0
         self.old_target_location = pygame.math.Vector2()
@@ -94,9 +97,9 @@ class Enemy(Entity):
         self.last_summary_time = 0
         self.last_internal_move_update = 0
 
-        self.chat_interval = 6  # seconds
-        self.summary_interval = 20  # seconds
-        self.internal_move_update_interval = 0.5  # seconds
+        self.chat_interval = 4000  # ticks
+        self.summary_interval = 1600  # ticks
+        self.internal_move_update_interval = 100  # ticks
 
         self.reason = None
 
@@ -126,8 +129,8 @@ class Enemy(Entity):
         self.heal_sound.set_volume(0.6)
 
         # Add tooltips
-        self.text_bubble = TextBubble([self.groups[0]])
-        self.status_bars = StatusBars(self.groups[0])
+        self.text_bubble = TextBubble(self.visible_sprite)
+        self.status_bars = StatusBars(self.visible_sprite)
 
         # upgrade cost
         self.upgrade_cost = 100
@@ -356,7 +359,7 @@ class Enemy(Entity):
                 self.health = self.max_health
 
         self.animation_player.create_particles(
-            "sparkle", target.hitbox.center, [self.groups[0]]
+            "sparkle", target.hitbox.center, [self.visible_sprite]
         )
         self.exp += 10
 
@@ -408,17 +411,21 @@ class Enemy(Entity):
         # self.set_decision(self.persona.decision)
 
         if not self.text_bubble:
-            self.text_bubble = TextBubble(self.groups[0])
+            self.text_bubble = TextBubble(self.visible_sprite)
         if not self.status_bars:
-            self.status_bars = StatusBars(self.groups[0])
+            self.status_bars = StatusBars(self.visible_sprite)
 
         self.status_bars.update_rect(
             self  # Max energy (if you want to add energy system later)
         )
+        # update bubble
+        if self.reason:
+            self.text_bubble.update_text(
+                f"{self.action} {self.target_name}: {self.reason}", self.rect
+            )
 
         target = self.target_select(player, entities, objects)
         if target:
-            # update bubble
 
             distance, _ = get_distance_direction(self, target)
             if distance <= self.act_radius and self.can_act:
@@ -450,12 +457,7 @@ class Enemy(Entity):
             ):
                 self.internal_move_update(target)
                 self.last_internal_move_update = current_time
-                # self.wander()
-
-            if self.reason:
-                self.text_bubble.update_text(
-                    f"{self.action} {target.full_name}: {self.reason}", self.rect
-                )
+                self.wander()
 
         # save observation
         self.save_observation(player, entities, objects)
@@ -540,7 +542,7 @@ class Enemy(Entity):
     async def enemy_decision(self, player, entities, objects):
         try:
             distance, _ = get_distance_direction(self, player)
-            current_time = time.time()
+            current_time = pygame.time.get_ticks()
 
             if distance <= self.notice_radius:
                 if current_time - self.last_chat_time >= self.chat_interval:
@@ -549,19 +551,19 @@ class Enemy(Entity):
                         self.decision_task = asyncio.create_task(
                             asyncio.wait_for(
                                 self.persona.fetch_decision(self),
-                                timeout=5.0,
+                                timeout=20.0,
                             )
                         )
                         self.last_chat_time = current_time
 
-                if current_time - self.last_summary_time >= self.summary_interval:
-                    if self.summary_task is None or self.summary_task.done():
-                        self.summary_task = asyncio.create_task(
-                            asyncio.wait_for(
-                                self.persona.summary_context(self),
-                                timeout=10.0,
-                            )
-                        )
+                # if current_time - self.last_summary_time >= self.summary_interval:
+                #     if self.summary_task is None or self.summary_task.done():
+                #         self.summary_task = asyncio.create_task(
+                #             asyncio.wait_for(
+                #                 self.persona.summary_context(self),
+                #                 timeout=20.0,
+                #             )
+                #         )
 
                         self.last_summary_time = current_time
 

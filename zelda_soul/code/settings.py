@@ -127,7 +127,7 @@ monster_data = {
         "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
-        "characteristic": "prefer mining",
+        "characteristic": "aggressive",
     },
 }
 

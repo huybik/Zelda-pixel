@@ -1,0 +1,12 @@
+[tool.poetry]
+name = "zelda-soul"
+version = "0.0.1"
+description = "Zelda with soul entities"
+authors = ["huybik"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+openai = "^1.54.4"
+pygame = "^2.6.1"
+python-dotenv = "^1.0.1"
+llama-cpp-python = "^0.3.2"

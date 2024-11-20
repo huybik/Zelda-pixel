@@ -6,6 +6,7 @@ import pygame
 from level import Level
 from settings import WIDTH, HEIGTH, FPS, WATER_COLOR
 from debug import debug
+from dotenv import load_dotenv
 
 
 class Game:
@@ -47,4 +48,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    load_dotenv()
     asyncio.run(main())
