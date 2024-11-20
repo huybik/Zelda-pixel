@@ -1,6 +1,6 @@
 import pygame
 from entity import Entity
-from settings import monster_data, output_format
+from settings import monster_data, CHAT_INTERVAL, SUMMARY_INTERVAL
 from debug import debug
 import time
 from tooltips import TextBubble, StatusBars
@@ -97,8 +97,8 @@ class Enemy(Entity):
         self.last_summary_time = 0
         self.last_internal_move_update = 0
 
-        self.chat_interval = 4000  # ticks
-        self.summary_interval = 1600  # ticks
+        self.chat_interval = CHAT_INTERVAL  # ticks
+        self.summary_interval = SUMMARY_INTERVAL  # ticks
         self.internal_move_update_interval = 100  # ticks
 
         self.reason = None
@@ -545,7 +545,7 @@ class Enemy(Entity):
             current_time = pygame.time.get_ticks()
 
             if distance <= self.notice_radius:
-                if current_time - self.last_chat_time >= self.chat_interval:
+                if current_time - self.last_chat_time >= self.chat_interval or not self.decision_task:
                     # Add timeout to prevent hanging
                     if self.decision_task is None or self.decision_task.done():
                         self.decision_task = asyncio.create_task(
@@ -565,7 +565,7 @@ class Enemy(Entity):
                 #             )
                 #         )
 
-                        self.last_summary_time = current_time
+                #         self.last_summary_time = current_time
 
         except Exception as e:
             print(f"Enemy decision error: {e}")

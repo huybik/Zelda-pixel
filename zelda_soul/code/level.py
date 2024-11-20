@@ -1,7 +1,7 @@
 import pygame
 from player import Player
 from tile import Tile
-from settings import TILESIZE, weapon_data
+from settings import TILESIZE, INFERENCE_MODE
 from debug import debug
 from support import import_csv_layout, import_folder
 import random
@@ -32,7 +32,7 @@ class Level:
 
         # user interface
         self.ui = UI()
-        self.api = API(mode="online")
+        self.api = API(mode=INFERENCE_MODE)
         # self.text_bubble = TextBubble()
 
         # sprite setup
@@ -89,9 +89,9 @@ class Level:
                         elif sprite_type == "object":
                             surface = graphics[sprite_type][int(col)]
                             if int(col) <= 4 and int(col) > 1:
-                                full_name = "tree"
+                                full_name = "resource"
                             elif int(col) > 14 and int(col) < 21:
-                                full_name = "statue"
+                                full_name = "resource"
                             else:
                                 full_name = "object"
 

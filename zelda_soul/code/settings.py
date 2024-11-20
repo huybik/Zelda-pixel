@@ -1,9 +1,16 @@
+
 # game setup
 WIDTH = 1280
 HEIGTH = 720
 FPS = 60
 TILESIZE = 64
 
+# model
+MODEL_PATH = "../model/Qwen2.5-Coder-0.5B-Instruct.Q4_K_M.gguf"
+INFERENCE_MODE = "local"
+CONTEXT_LENGTH = 8192
+CHAT_INTERVAL = 24000
+SUMMARY_INTERVAL = 12000
 # ui
 BAR_HEIGHT = 20
 HEALTH_BAR_WIDTH = 150
@@ -131,6 +138,29 @@ monster_data = {
     },
 }
 
-default_actionable = "your priority is to survive using all actions you have at your posession. When you attack and kill an enemy you gain its exp. When you mine you gain back lost hp and energy and some exp. You will be upgraded for every 100 exp."
 
-output_format = '{"target_name": "name/None","action": "attack/runaway/heal/mine","aggression": "0-100","reason": "your reason"}'
+prompt_template = """
+            Using Context that contains your 'Observation' about the world and your 'Memory', determine your next step to fulfill your goal. Respond **only** in the following JSON format similar to this example: Output Example:{{"action": string,"target_name": string,"aggression": int,"reason": string}}
+            
+            Keywords:
+                
+            "action": Choose one from ("attack", "runaway", "heal", "mine"). "attack": Attack a target entity. "runaway": Run away from a target entity. "heal": Heal a target entity which costs energy. "mine": can only mine resource target. 
+            "target_name": Specify target name (entity_name or object_name) from your 'Observation' or "None" if there’s no target.
+            "aggression": A score from 0 to 100 indicating your aggression towards the target.
+            "reason": Provide the reason for your action in 5 words or less.
+            
+            Context:
+
+            You are {full_name}, and you are {characteristic}.
+            Priority: Survive using all actions available.
+            Killing entity grants experience points (exp).
+            Mining restores lost HP and energy while granting exp.
+            You are upgraded every 100 exp.
+
+            Inputs:
+
+            'Observation': {observation}
+            'Memory': {summary}
+            
+            Output:
+            """

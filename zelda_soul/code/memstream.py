@@ -41,7 +41,7 @@ class MemoryStream:
             energy = (entity.energy / entity.max_energy) * 100
 
         observation = (
-            f"name:{entity.full_name},"
+            f"entity_name:{entity.full_name},"
             f"new_event:{entity.event_status},"
             f"previous_action:{entity.action},"
             f"\location:{entity.rect.centerx},{entity.rect.centery},"
@@ -95,7 +95,7 @@ class MemoryStream:
                 distance, _ = get_distance_direction(entity, obj)
                 if distance <= entity.notice_radius:
                     nearby_objects.append(
-                        f"(name:{obj.full_name},"
+                        f"(object_name:{obj.full_name},"
                         f"location:{obj.rect.centerx},{obj.rect.centery},"
                         f"distance:{distance:.1f})"
                     )

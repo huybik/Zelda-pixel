@@ -5,7 +5,7 @@ import asyncio
 from memstream import MemoryStream
 import json
 import pygame
-from settings import default_actionable, output_format
+from settings import  MODEL_PATH, CONTEXT_LENGTH, prompt_template
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 from llama_cpp import Llama
-
+import time
 
 
 
@@ -24,8 +24,9 @@ class API:
         self.system_prompt = """You are an smart being that like to plan your action"""
         self.mode = mode
         if self.mode == "local":
-            self.client = Llama(model_path="../model/qwen2.5-0.5b-q4_0.gguf",
-            n_ctx=2048,
+            self.client = Llama(model_path=MODEL_PATH,
+            n_threads=4,
+            n_ctx=CONTEXT_LENGTH,
             # use_mlock=False,
             verbose=False
             )
@@ -40,6 +41,8 @@ class API:
         if not system_prompt:
             system_prompt = self.system_prompt
         
+        
+        
         messages=[
         {'role': 'system', 'content': system_prompt},
         {'role': 'user', 'content': user_input}
@@ -47,17 +50,16 @@ class API:
         
         try:
             loop = asyncio.get_event_loop()
-            
+            current = time.time()
             if self.mode == "local":
                 
-                ai_response = response.choices[0].message.content
                 response = await loop.run_in_executor(
                 None,  # None uses the default executor
                 lambda: self.client.create_chat_completion(
                     messages=messages,
                     temperature=0,
-                    max_tokens=128,
-                    repeat_penalty=1.5,
+                    # max_tokens=128,
+                    # repeat_penalty=1.5,
                     )
                 )
                 ai_response = response["choices"][0]["message"]["content"].strip()
@@ -69,8 +71,11 @@ class API:
                         messages=[{"role": "user", "content": user_input}],
                     ),
                 )
+                ai_response = response.choices[0].message.content
+                
 
             print(ai_response)
+            print(f"Time taken: {time.time() - current}")
             
             return ai_response
 
@@ -106,24 +111,18 @@ class Persona:
     async def fetch_decision(
         self,
         entity: "Enemy",
+        
     ):
 
         # observation = self.memory.save_observation(entity, player, entities, objects)
         summary = self.memory.read_summary(entity)
         observation = self.memory.read_last_n_observations(entity, 3)
 
-        prompt = (
-            f"Using your last 'Observation' about the world and your 'Memory', decide next step to fullfil your 'Motive' "
-            "aggression: your aggressive score from 0 to 100. "
-            f"action: attack or runaway from enemy, heal ally which cost energy, or mine trees. "
-            "target_name: your action need a target, write it's name. write 'None' if you cant find your target"
-            "reason: reason for your action less than 5 words.\n "
-            f"You are {entity.full_name} and you are {entity.characteristic}.\n"
-            f"'Motive' \n{default_actionable}.\n"
-            f"'Observation' \n{observation}\n"
-            f"'Memory' \n{summary}\n"
-            f"Response with 'next step', example: {output_format} \n\n"
-            "Your 'next step':"
+        prompt = prompt_template.format(
+            full_name=entity.full_name,
+            characteristic=entity.characteristic,
+            summary=summary,
+            observation=observation,
         )
 
         try:
