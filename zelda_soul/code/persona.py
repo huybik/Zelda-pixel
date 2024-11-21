@@ -5,7 +5,7 @@ import asyncio
 from memstream import MemoryStream
 import json
 import pygame
-from settings import  MODEL_PATH, CONTEXT_LENGTH, prompt_template
+from settings import  MODEL_PATH, CONTEXT_LENGTH, prompt_template, GPU, summary_template
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -25,10 +25,15 @@ class API:
         self.mode = mode
         if self.mode == "local":
             self.client = Llama(model_path=MODEL_PATH,
-            n_threads=4,
+            # n_threads=8,
             n_ctx=CONTEXT_LENGTH,
-            # use_mlock=False,
-            verbose=False
+            verbose=True,
+            n_gpu_layers=-1, 
+            use_mlock=True,
+            # use_mmap=True,
+            
+            n_batch=226,
+            seed=42,
             )
         else:
             
@@ -74,7 +79,7 @@ class API:
                 ai_response = response.choices[0].message.content
                 
 
-            print(ai_response)
+            # print(ai_response)
             print(f"Time taken: {time.time() - current}")
             
             return ai_response
@@ -116,7 +121,7 @@ class Persona:
 
         # observation = self.memory.save_observation(entity, player, entities, objects)
         summary = self.memory.read_summary(entity)
-        observation = self.memory.read_last_n_observations(entity, 3)
+        observation = self.memory.read_last_n_observations(entity, 1)
 
         prompt = prompt_template.format(
             full_name=entity.full_name,
@@ -128,10 +133,15 @@ class Persona:
         try:
             response = await self.api.get_response(user_input=prompt)
             # print(f"prompt: {prompt}\n")
-            # print(f"{entity.full_name} decision: {response} \n")
             try:
+                response = '{' + response.split('{')[-1].split('}')[0] + '}'
+                print(f"{entity.full_name} decision: {response} \n")
+                
+                
                 data = json.loads(response)
                 self.decision = data
+                
+                return
             except json.JSONDecodeError:
                 print("Error load json")
 
@@ -142,23 +152,19 @@ class Persona:
     async def summary_context(
         self,
         entity: "Enemy",
-        threshold=100,
+        threshold=50,
     ):
         # memory_stream = self.memory.read_memory(entity)
-        memory_stream = self.memory.read_last_n_observations(entity, 5)
-        observation = self.memory.read_last_n_observations(entity, 1)
+        memory_stream = self.memory.read_last_n_observations(entity, 3)
+        summary = self.memory.read_summary(entity)
+        # observation = self.memory.read_last_n_observations(entity, 1)
 
-        prompt = (
-            f"You are {entity.full_name} and you are {entity.characteristic}."
-            f"your current 'observation': {observation}\n"
-            f"your 'memory stream': {memory_stream}\n"
-            "\nDo this step by step:\n"
-            "1. Fetch the most relevance, recency, and importance records events from 'memory stream' related to your current 'observation'."
-            f"2. Summary them in less than {threshold} words so that you can understand the situation."
-            f"Your summary: "
-        )
-
+        prompt = summary_template.format(memory_stream=memory_stream,
+                              threshold=threshold,
+                              summary = summary)
+            
         try:
+            # print(f"prompt: {prompt}\n")
             response = await self.api.get_response(user_input=prompt)
             print(f"{entity.full_name} summary: {response} \n")
 
@@ -166,8 +172,10 @@ class Persona:
             self.summary = response
             filename = f"summary_{entity.full_name}"
             self.memory.write_data(filename, response)
+            
+            return
 
-        except (asyncio.TimeoutError, Exception) as e:
+        except Exception as e:
             print(f"Error getting summary: {e}")
             # Keep the current direction on error
 

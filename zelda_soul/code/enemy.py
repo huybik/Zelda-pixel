@@ -1,6 +1,6 @@
 import pygame
 from entity import Entity
-from settings import monster_data, CHAT_INTERVAL, SUMMARY_INTERVAL
+from settings import monster_data, CHAT_INTERVAL, SUMMARY_INTERVAL, OBSERVATION_COOLDOWN
 from debug import debug
 import time
 from tooltips import TextBubble, StatusBars
@@ -13,6 +13,7 @@ import random
 from queue import PriorityQueue
 
 from typing import TYPE_CHECKING
+from queue import PriorityQueue
 
 if TYPE_CHECKING:
     from entity import Entity
@@ -33,7 +34,8 @@ class Enemy(Entity):
         groups,
         obstacle_sprites,
         visible_sprite,
-        api
+        api,
+        global_queue : PriorityQueue,
     ):
 
         # general setup
@@ -42,6 +44,7 @@ class Enemy(Entity):
         self.groups = groups
         self.memory = MemoryStream()
         self.persona = Persona(api)
+        self.global_queue = global_queue
 
         # graphic setup
         path = "../graphics/monsters/"
@@ -111,7 +114,7 @@ class Enemy(Entity):
 
         # cooldowns
         self.observation_time = 0
-        self.observation_cooldown = 1000
+        self.observation_cooldown = OBSERVATION_COOLDOWN
         self.can_save_observation = True
 
         self.vulnerable = True
@@ -539,33 +542,24 @@ class Enemy(Entity):
                 # print(self.target_location)
                 # + pygame.math.Vector2(random.randint(-1, 1), random.randint(-1, 1))
 
-    async def enemy_decision(self, player, entities, objects):
+    def enemy_decision(self, distance):
         try:
-            distance, _ = get_distance_direction(self, player)
+
             current_time = pygame.time.get_ticks()
+            
+            if current_time - self.last_chat_time >= self.chat_interval or self.last_chat_time == 0:
+                self.global_queue.put_nowait((distance, (f"{self.full_name} decision", self.persona.fetch_decision(self))))
+                self.last_chat_time = current_time
 
-            if distance <= self.notice_radius:
-                if current_time - self.last_chat_time >= self.chat_interval or not self.decision_task:
-                    # Add timeout to prevent hanging
-                    if self.decision_task is None or self.decision_task.done():
-                        self.decision_task = asyncio.create_task(
-                            asyncio.wait_for(
-                                self.persona.fetch_decision(self),
-                                timeout=20.0,
-                            )
-                        )
-                        self.last_chat_time = current_time
+                print("Queue:", self.global_queue.qsize())
+                
+            current_time = pygame.time.get_ticks()
+            if current_time - self.last_summary_time >= self.summary_interval or self.last_summary_time == 0:
+                self.global_queue.put_nowait((distance, (f"{self.full_name} summary",self.persona.summary_context(self))))
+                self.last_summary_time = current_time
+                    
+                print("Queue:", self.global_queue.qsize())
 
-                # if current_time - self.last_summary_time >= self.summary_interval:
-                #     if self.summary_task is None or self.summary_task.done():
-                #         self.summary_task = asyncio.create_task(
-                #             asyncio.wait_for(
-                #                 self.persona.summary_context(self),
-                #                 timeout=20.0,
-                #             )
-                #         )
-
-                #         self.last_summary_time = current_time
 
         except Exception as e:
             print(f"Enemy decision error: {e}")
@@ -589,5 +583,6 @@ class Enemy(Entity):
             self.idle()
         else:
             self.interaction(player, entities, objects)
+            self.enemy_decision(distance)
 
         self.move(self.target_location, self.speed, objects)

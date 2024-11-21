@@ -6,11 +6,16 @@ FPS = 60
 TILESIZE = 64
 
 # model
-MODEL_PATH = "../model/Qwen2.5-Coder-0.5B-Instruct.Q4_K_M.gguf"
+MODEL_PATH = "../model/qwen2.5-1.5b-instruct-q4_k_m.gguf"
 INFERENCE_MODE = "local"
 CONTEXT_LENGTH = 8192
 CHAT_INTERVAL = 24000
-SUMMARY_INTERVAL = 12000
+SUMMARY_INTERVAL = 72000
+GPU=-1 # 0 for CPU
+
+# event
+OBSERVATION_COOLDOWN = 2000
+
 # ui
 BAR_HEIGHT = 20
 HEALTH_BAR_WIDTH = 150
@@ -140,14 +145,14 @@ monster_data = {
 
 
 prompt_template = """
-            Using Context that contains your 'Observation' about the world and your 'Memory', determine your next step to fulfill your goal. Respond **only** in the following JSON format similar to this example: Output Example:{{"action": string,"target_name": string,"aggression": int,"reason": string}}
+            Using Context that contains your 'Observation' about the world and your 'Memory', determine your next step to fulfill your goal. Respond **only** in the following JSON format:{{"action": string,"target_name": string,"aggression": int,"reason": string}}
             
             Keywords:
                 
-            "action": Choose one from ("attack", "runaway", "heal", "mine"). "attack": Attack a target entity. "runaway": Run away from a target entity. "heal": Heal a target entity which costs energy. "mine": can only mine resource target. 
+            "action": Choose one from ("attack", "runaway", "heal", "mine"). "attack": Attack a target entity. "runaway": Run away from a target entity. "heal": Heal a target entity which costs energy. "mine": Mine a target resource. 
             "target_name": Specify target name (entity_name or object_name) from your 'Observation' or "None" if there’s no target.
             "aggression": A score from 0 to 100 indicating your aggression towards the target.
-            "reason": Provide the reason for your action in 5 words or less.
+            "reason": Provide the reason for your action in less than 5 words.
             
             Context:
 
@@ -164,3 +169,10 @@ prompt_template = """
             
             Output:
             """
+
+summary_template = """
+            Using 'memory_stream' to think about your current situation in short paragraph less than {threshold} words. "last_summary" provide context for your last situation.
+            "memory_stream": {memory_stream}
+            "last_summary": {summary}
+            Your current situation: """
+        
