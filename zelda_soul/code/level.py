@@ -15,9 +15,9 @@ from upgrade import Upgrade
 from camera import YSortCameraGroup
 from magic import MagicPlayer
 from persona import API
-from queue import PriorityQueue
+# from queue import PriorityQueue
 import asyncio
-
+from priorityqueue import PriorityQueueWithUpdate
 
 
 class Level:
@@ -33,7 +33,7 @@ class Level:
         self.attackable_sprites = pygame.sprite.Group()
         self.entities = []
         self.objects = []
-        self.global_queue = PriorityQueue()
+        self.global_queue = PriorityQueueWithUpdate()
         self.decision_task = None
 
         # user interface
@@ -217,9 +217,7 @@ class Level:
            
             if not self.global_queue.empty():
                 if self.decision_task is None or self.decision_task.done():
-                    priority, (task_type,task) = self.global_queue.get_nowait()
-                    print(f"{task_type}")
-                    self.global_queue.task_done()
+                    priority, task = self.global_queue.get()
 
                     self.decision_task = asyncio.create_task(
                         asyncio.wait_for(

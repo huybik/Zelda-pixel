@@ -10,11 +10,9 @@ from persona import Persona
 from memstream import MemoryStream
 from support import get_distance_direction, wave_value
 import random
-from queue import PriorityQueue
-
+from priorityqueue import PriorityQueueWithUpdate
 from typing import TYPE_CHECKING
 from queue import PriorityQueue
-
 if TYPE_CHECKING:
     from entity import Entity
     from tile import Tile
@@ -35,7 +33,7 @@ class Enemy(Entity):
         obstacle_sprites,
         visible_sprite,
         api,
-        global_queue : PriorityQueue,
+        global_queue : PriorityQueueWithUpdate,
     ):
 
         # general setup
@@ -106,8 +104,8 @@ class Enemy(Entity):
 
         self.reason = None
 
-        self.decision_task = None
-        self.summary_task = None
+        self.task_decision = None
+        self.task_summary = None
 
         self.current_decision = None
         self.event_status = None
@@ -547,18 +545,33 @@ class Enemy(Entity):
 
             current_time = pygame.time.get_ticks()
             
-            if current_time - self.last_chat_time >= self.chat_interval or self.last_chat_time == 0:
-                self.global_queue.put_nowait((distance, (f"{self.full_name} decision", self.persona.fetch_decision(self))))
+            if current_time - self.last_chat_time >= self.chat_interval or not self.task_decision:
+                # create new task
+                self.task_decision = self.persona.fetch_decision(self)
+                self.global_queue.put(priority=distance, task=self.task_decision)
+                # update distance
                 self.last_chat_time = current_time
 
-                print("Queue:", self.global_queue.qsize())
+                print("Queue size:", self.global_queue.qsize())
+            
+            else:
+                # check task exist
+                if self.global_queue.is_in(self.task_decision):
+                    # update priority for old task
+                    self.global_queue.put(priority=distance, task=self.task_decision)
                 
-            current_time = pygame.time.get_ticks()
-            if current_time - self.last_summary_time >= self.summary_interval or self.last_summary_time == 0:
-                self.global_queue.put_nowait((distance, (f"{self.full_name} summary",self.persona.summary_context(self))))
+            if current_time - self.last_summary_time >= self.summary_interval or not self.task_summary:
+                self.task_summary = self.persona.summary_context(self)
+                self.global_queue.put(distance, self.task_summary)
                 self.last_summary_time = current_time
                     
-                print("Queue:", self.global_queue.qsize())
+                print("Queue size:", self.global_queue.qsize())
+                
+            else:
+                 # check task exist
+                if self.global_queue.is_in(self.task_summary):
+                    # update priority for old task
+                    self.global_queue.put(priority=distance, task=self.task_summary)                
 
 
         except Exception as e:
