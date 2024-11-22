@@ -121,7 +121,7 @@ class Persona:
 
         # observation = self.memory.save_observation(entity, player, entities, objects)
         summary = self.memory.read_summary(entity)
-        observation = self.memory.read_last_n_observations(entity, 1)
+        observation = self.memory.read_last_n_observations(entity, 2)
 
         prompt = prompt_template.format(
             full_name=entity.full_name,
@@ -132,7 +132,7 @@ class Persona:
 
         try:
             response = await self.api.get_response(user_input=prompt)
-            # print(f"prompt: {prompt}\n")
+            print(f"prompt: {prompt}\n")
             try:
                 response = '{' + response.split('{')[-1].split('}')[0] + '}'
                 print(f"{entity.full_name} decision: {response} \n")
@@ -155,7 +155,7 @@ class Persona:
         threshold=50,
     ):
         # memory_stream = self.memory.read_memory(entity)
-        memory_stream = self.memory.read_last_n_observations(entity, 3)
+        memory_stream = self.memory.read_last_n_observations(entity, 5)
         summary = self.memory.read_summary(entity)
         # observation = self.memory.read_last_n_observations(entity, 1)
 

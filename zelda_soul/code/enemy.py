@@ -100,7 +100,7 @@ class Enemy(Entity):
 
         self.chat_interval = CHAT_INTERVAL  # ticks
         self.summary_interval = SUMMARY_INTERVAL  # ticks
-        self.internal_move_update_interval = 100  # ticks
+        self.internal_move_update_interval = 500  # ticks
 
         self.reason = None
 
@@ -351,18 +351,18 @@ class Enemy(Entity):
         # save status
         # action
         if self.energy < self.max_energy:
-            self.energy += int(0.05 * self.max_energy)
+            self.energy += int(0.01 * self.max_energy)
             if self.energy > self.max_energy:
                 self.energy = self.max_energy
         if self.health < self.max_health:
-            self.health += int(0.05 * self.max_health)
+            self.health += int(0.01 * self.max_health)
             if self.health > self.max_health:
                 self.health = self.max_health
 
         self.animation_player.create_particles(
             "sparkle", target.hitbox.center, [self.visible_sprite]
         )
-        self.exp += 10
+        self.exp += 1
 
     def respawn(self):
         self.rect.topleft = self.starting_point
@@ -398,7 +398,9 @@ class Enemy(Entity):
             self.aggression = int(decision["aggression"])
             self.action = decision["action"]
             self.reason = decision["reason"]
-
+            
+            
+            # self.target_name = "None"
             # self.target_name = "player"
             # self.action = "runaway"
 
@@ -411,54 +413,57 @@ class Enemy(Entity):
             self.current_decision = self.persona.decision
         # self.set_decision(self.persona.decision)
 
-        if not self.text_bubble:
-            self.text_bubble = TextBubble(self.visible_sprite)
-        if not self.status_bars:
-            self.status_bars = StatusBars(self.visible_sprite)
+        # if not self.text_bubble:
+        #     self.text_bubble = TextBubble(self.visible_sprite)
+        # if not self.status_bars:
+        #     self.status_bars = StatusBars(self.visible_sprite)
 
-        self.status_bars.update_rect(
-            self  # Max energy (if you want to add energy system later)
-        )
-        # update bubble
-        if self.reason:
-            self.text_bubble.update_text(
-                f"{self.action} {self.target_name}: {self.reason}", self.rect
-            )
+        # else:
+        #     self.text_bubble.update_text("", self.rect)
+            
 
-        target = self.target_select(player, entities, objects)
-        if target:
-
-            distance, _ = get_distance_direction(self, target)
-            if distance <= self.act_radius and self.can_act:
-
-                if self.action == "attack":
-                    self.attack(target)
-                elif self.action == "heal":
-                    self.heal(target)
-                elif self.action == "mine":
-                    self.mine(target)
-                elif self.action == "runaway":
-                    self.runaway(target)
-
-                self.can_act = False
-                self.animate_sequence = self.action
-                self.act_time = pygame.time.get_ticks()
-
-                event_status = f"{self.action} {target.full_name}"
-
-                if self.event_status != event_status:
-                    self.event_status = event_status
-                    self.can_save_observation = True
-
-            # internal action update
+        if not self.target_name or self.target_name == "None":
             current_time = pygame.time.get_ticks()
             if (
                 current_time - self.last_internal_move_update
                 >= self.internal_move_update_interval
             ):
-                self.internal_move_update(target)
-                self.last_internal_move_update = current_time
                 self.wander()
+                self.last_internal_move_update = current_time
+        else:
+            target = self.target_select(player, entities, objects)
+            if target:
+                distance, _ = get_distance_direction(self, target)
+                if distance > self.act_radius and distance <= self.notice_radius:
+                    
+                        # internal action update
+                    current_time = pygame.time.get_ticks()
+                    if (
+                        current_time - self.last_internal_move_update
+                        >= self.internal_move_update_interval
+                    ):
+                        self.internal_move_update(target)
+                        self.last_internal_move_update = current_time
+                elif distance <= self.act_radius and self.can_act:
+
+                    if self.action == "attack":
+                        self.attack(target)
+                    elif self.action == "heal":
+                        self.heal(target)
+                    elif self.action == "mine":
+                        self.mine(target)
+                    elif self.action == "runaway":
+                        self.runaway(target)
+
+                    self.can_act = False
+                    self.animate_sequence = self.action
+                    self.act_time = pygame.time.get_ticks()
+
+                    event_status = f"{self.action} {target.full_name}"
+
+                    if self.event_status != event_status:
+                        self.event_status = event_status
+                        self.can_save_observation = True
 
         # save observation
         self.save_observation(player, entities, objects)
@@ -488,15 +493,14 @@ class Enemy(Entity):
 
     def wander(self):
         # wander arround if no target
-        if not self.target_name or self.target_name == "None":
             # walk aimlessly for a bit to find new target
             self.target_location = pygame.math.Vector2(
                 random.randint(
-                    int(self.hitbox.centerx - 100), int(self.hitbox.centerx + 100)
-                ),  # Random from current location
+                    int(self.starting_point[0] - 100), int(self.starting_point[0] + 100)
+                ),  # Random from starting location
                 random.randint(
-                    int(self.hitbox.centery - 100), int(self.hitbox.centery + 100)
-                ),  # Random from current location
+                    int(self.starting_point[1] - 100), int(self.starting_point[1] + 100)
+                ),  # Random from starting location
             )
             self.action = "move"
 
@@ -519,12 +523,12 @@ class Enemy(Entity):
         self.target_location = pygame.math.Vector2()
         self.target_name = None
         self.reason = None
-        if self.status_bars:
-            self.status_bars.kill()
-            self.status_bars = None
-        if self.text_bubble:
-            self.text_bubble.kill()
-            self.text_bubble = None
+        # if self.status_bars:
+        #     self.status_bars.kill()
+        #     self.status_bars = None
+        # if self.text_bubble:
+        #     self.text_bubble.kill()
+        #     self.text_bubble = None
 
     def internal_move_update(self, target: "Entity"):
 
@@ -593,9 +597,19 @@ class Enemy(Entity):
         # knockback
 
         if distance > self.notice_radius:
-            self.idle()
+            # self.idle()
+            pass
         else:
             self.interaction(player, entities, objects)
             self.enemy_decision(distance)
 
+        self.status_bars.update_rect(
+            self  # Max energy (if you want to add energy system later)
+        )
+        # update bubble
+        if self.reason:
+            self.text_bubble.update_text(
+                f"{self.action} {self.target_name}: {self.reason}", self.rect
+            )
+        
         self.move(self.target_location, self.speed, objects)

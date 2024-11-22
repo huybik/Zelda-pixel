@@ -6,7 +6,7 @@ FPS = 60
 TILESIZE = 64
 
 # model
-MODEL_PATH = "../model/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+MODEL_PATH = "../model/Llama-3.2-1B-Instruct.Q4_K_M.gguf"
 INFERENCE_MODE = "local"
 CONTEXT_LENGTH = 8192
 CHAT_INTERVAL = 24000
@@ -126,7 +126,7 @@ monster_data = {
         "resistance": 3,
         "act_radius": 200,
         "notice_radius": 600,
-        "characteristic": "neutral",
+        "characteristic": "support racoon",
     },
     "bamboo": {
         "id": 390,
@@ -139,7 +139,7 @@ monster_data = {
         "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
-        "characteristic": "aggressive",
+        "characteristic": "perfer attacking player",
     },
 }
 
@@ -171,7 +171,7 @@ prompt_template = """
             """
 
 summary_template = """
-            Using 'memory_stream' to think about your current situation in short paragraph less than {threshold} words. "last_summary" provide context for your last situation.
+            Extract significant events from 'memory_stream' to think about your current situation in short paragraph less than {threshold} words. "last_summary" provide context for your last situation.
             "memory_stream": {memory_stream}
             "last_summary": {summary}
             Your current situation: """

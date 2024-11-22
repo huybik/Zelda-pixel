@@ -121,7 +121,7 @@ class StatusBars(pygame.sprite.Sprite):
         # Draw exp text
         font = pygame.font.Font(None, 12)  # Default font, size 20
         exp_text = font.render(
-            f"EXP:{entity.exp}, UP:{entity.upgrade_cost}, HP:{entity.max_health}, ATT:{entity.attack_damage}, SPD:{entity.speed}",
+            f"EXP:{entity.exp}, LVL:{entity.lvl}, HP:{entity.max_health}, ATT:{entity.attack_damage}, SPD:{entity.speed}",
             True,
             (255, 255, 255),
         )  # White text
