@@ -5,7 +5,7 @@ import asyncio
 from memstream import MemoryStream
 import json
 import pygame
-from settings import  MODEL_PATH, CONTEXT_LENGTH, prompt_template, GPU, summary_template
+from settings import  MODEL_PATH, CONTEXT_LENGTH, prompt_template, GPU, summary_template, OBSERVATION_TO_SUMMARY, SUMMARY_SIZE, MEMORY_SIZE
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -120,20 +120,24 @@ class Persona:
     ):
 
         # observation = self.memory.save_observation(entity, player, entities, objects)
-        summary = self.memory.read_summary(entity)
-        observation = self.memory.read_last_n_observations(entity, 2)
+        summary_file = f"summary_{entity.full_name}.json"
+        observation_file = f"stream_{entity.full_name}.json"
+        summary = self.memory.read_last_n_records(summary_file,1)
+        observation = self.memory.read_last_n_records(observation_file, 1)
 
         prompt = prompt_template.format(
             full_name=entity.full_name,
             characteristic=entity.characteristic,
             summary=summary,
+            # observation=None,
             observation=observation,
         )
 
         try:
             response = await self.api.get_response(user_input=prompt)
-            print(f"prompt: {prompt}\n")
             try:
+                # print(f"prompt: {prompt}\n")
+                
                 response = '{' + response.split('{')[-1].split('}')[0] + '}'
                 print(f"{entity.full_name} decision: {response} \n")
                 
@@ -155,13 +159,17 @@ class Persona:
         threshold=50,
     ):
         # memory_stream = self.memory.read_memory(entity)
-        memory_stream = self.memory.read_last_n_observations(entity, 5)
-        summary = self.memory.read_summary(entity)
-        # observation = self.memory.read_last_n_observations(entity, 1)
+        memory_file = f"stream_{entity.full_name}.json"
+        summary_file = f"summary_{entity.full_name}.json"
+        
+        memory_stream = self.memory.read_last_n_records(memory_file, 1)
+        # memory_stream = self.memory.read_last_n_records(memory_file, OBSERVATION_TO_SUMMARY)
+        summary = self.memory.read_last_n_records(summary_file, 1)
 
         prompt = summary_template.format(memory_stream=memory_stream,
+                              summary = summary,
                               threshold=threshold,
-                              summary = summary)
+                              )
             
         try:
             # print(f"prompt: {prompt}\n")
@@ -170,8 +178,9 @@ class Persona:
 
             # self.memory.write_data(response, "summary", full_name)
             self.summary = response
-            filename = f"summary_{entity.full_name}"
-            self.memory.write_data(filename, response)
+            
+            filename = f"summary_{entity.full_name}.json"
+            self.save_summary(response,filename, threshold=MEMORY_SIZE)
             
             return
 
@@ -179,13 +188,16 @@ class Persona:
             print(f"Error getting summary: {e}")
             # Keep the current direction on error
 
+    
 
-if __name__ == "__main__":
-    persona = API()
-    prompt = """Based on provided memory streams, give a summary of the situation in less than 20 words. Memory stream: "
-              2024-11-05 15:14:45,name:bamboo,location:(2592, 1504),health:70/70,status:idle,target:[0, 0],player_distance:296.2,player_pos:(2308, 1420),player_status:down
-                2024-11-05 15:14:48,name:bamboo,location:(2542, 1461),health:70/70,status:move,target:[2540, 1460],player_distance:134.5,player_pos:(2409, 1481),player_status:right_idle
-                2024-11-05 15:14:51,name:bamboo,location:(2561, 1479),health:45/70,status:move,target:[2500, 1480],player_distance:152.0,player_pos:(2409, 1481),player_status:right_attack
-                2024-11-05 15:14:54,name:bamboo,location:(2504, 1476),health:20/70,status:move,target:[2500, 1475],player_distance:95.1,player_pos:(2409, 1481),player_status:right_attack"""
-    response = asyncio.run(persona.get_response(prompt))
-    print(response)
+    def save_summary(self, entry, filename, threshold=MEMORY_SIZE):
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        
+        entry = {
+            "timestamp": timestamp,
+            "summary": entry
+        }
+        
+        
+        self.memory.write_memory(entry, filename, threshold=threshold)
+   

@@ -15,7 +15,9 @@ GPU=-1 # 0 for CPU
 
 # event
 OBSERVATION_COOLDOWN = 2000
-
+MEMORY_SIZE = 3
+SUMMARY_SIZE = 5
+OBSERVATION_TO_SUMMARY = 3
 # ui
 BAR_HEIGHT = 20
 HEALTH_BAR_WIDTH = 150
@@ -145,14 +147,15 @@ monster_data = {
 
 
 prompt_template = """
-            Using Context that contains your 'Observation' about the world and your 'Memory', determine your next step to fulfill your goal. Respond **only** in the following JSON format:{{"action": string,"target_name": string,"aggression": int,"reason": string}}
             
-            Keywords:
+            
+            Guidelines:
                 
             "action": Choose one from ("attack", "runaway", "heal", "mine"). "attack": Attack a target entity. "runaway": Run away from a target entity. "heal": Heal a target entity which costs energy. "mine": Mine a target resource. 
             "target_name": Specify target name (entity_name or object_name) from your 'Observation' or "None" if there’s no target.
-            "aggression": A score from 0 to 100 indicating your aggression towards the target.
-            "reason": Provide the reason for your action in less than 5 words.
+            "vigilant": A score from 0 to 100 indicating your current vigilant level.
+            "reason": A 5 words reason.
+            
             
             Context:
 
@@ -162,17 +165,24 @@ prompt_template = """
             Mining restores lost HP and energy while granting exp.
             You are upgraded every 100 exp.
 
-            Inputs:
-
             'Observation': {observation}
             'Memory': {summary}
             
-            Output:
+            Using above ontext that contains your current 'Observation' about the world and your 'Memory' (which can be None) to plan your next step. Respond in single JSON with the format of"Next step":{{"action": string,"target_name": string,"vigilant": int,"reason": string}}
+            
+            'Next step':
             """
 
 summary_template = """
-            Extract significant events from 'memory_stream' to think about your current situation in short paragraph less than {threshold} words. "last_summary" provide context for your last situation.
+            Use records from 'memory_stream' to think about your current situation in short paragraph less than {threshold} words. "last_summary" provide context for your last situation.
             "memory_stream": {memory_stream}
             "last_summary": {summary}
             Your current situation: """
         
+action_template = """ 
+            Posible actions:
+            attack: {attack_targets}
+            runaway: {runaway_targets}
+            heal: {heal_targets}
+            mine: {mine_targets}
+            """

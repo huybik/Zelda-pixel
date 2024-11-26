@@ -222,7 +222,7 @@ class Level:
                     self.decision_task = asyncio.create_task(
                         asyncio.wait_for(
                             task,
-                            timeout=20.0,
+                            timeout=60.0,
                         )
                     )
                 

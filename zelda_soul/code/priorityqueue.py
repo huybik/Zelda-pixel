@@ -1,5 +1,7 @@
 import heapq
 
+import heapq
+
 class PriorityQueueWithUpdate:
     def __init__(self):
         self.heap = []  # The heap to maintain priority order
@@ -7,40 +9,42 @@ class PriorityQueueWithUpdate:
         self.entry_finder = {}  # Mapping of tasks to their heap entries
         self.REMOVED = '<removed-task>'  # Placeholder for removed tasks
     
-    def put(self,  priority, task):
-        # Add a new task or update an existing task
-        if id(task) in self.entry_finder:
+    def put(self, priority, task):
+        """Add a new task or update the priority of an existing task."""
+        if task in self.entry_finder:
             self.remove_task(task)
         count = self.counter
         self.counter += 1
         entry = [priority, count, task]
-        self.entry_finder[id(task)] = entry
+        self.entry_finder[task] = entry
         heapq.heappush(self.heap, entry)
     
-    def is_in(self, task):
-        if id(task) in self.entry_finder:
-            return True
-        return False
+    def has(self, task):
+        """Check if the task exists in the queue."""
+        return task in self.entry_finder and self.entry_finder[task][-1] != self.REMOVED
     
     def remove_task(self, task):
-        # Mark a task as removed
-        entry = self.entry_finder.pop(id(task))
-        entry[-1] = self.REMOVED
+        """Mark a task as removed without actually removing it from the heap."""
+        entry = self.entry_finder.pop(task, None)
+        if entry:
+            entry[-1] = self.REMOVED
 
     def get(self):
-        # Pop the smallest task
+        """Remove and return the lowest-priority task."""
         while self.heap:
             priority, count, task = heapq.heappop(self.heap)
             if task is not self.REMOVED:
-                del self.entry_finder[id(task)]
+                del self.entry_finder[task]
                 return priority, task
         raise KeyError('pop from an empty priority queue')
     
     def qsize(self):
+        """Return the number of valid tasks in the queue."""
         return len(self.entry_finder)
     
     def empty(self):
-        return not bool(self.entry_finder)    
+        """Check if the queue is empty."""
+        return not self.entry_finder    
 # # Example usage:
 # pq = PriorityQueueWithUpdate()
 

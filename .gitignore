@@ -3,3 +3,7 @@ openai-key.txt
 zelda_soul/memory/*
 zelda_soul/model/*
 
+zelda_soul/code/zelda_soul.spec
+zelda_soul/code/dist/zelda_soul
+zelda_soul/code/output.jsonl
+poetry.lock

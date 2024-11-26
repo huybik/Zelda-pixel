@@ -37,7 +37,7 @@ class Entity(pygame.sprite.Sprite):
         self.target_location = None
         self.target_name = None
 
-        self.event_status = None
+        self.outside_event = None
         self.reason = None
 
         # stats
@@ -64,6 +64,19 @@ class Entity(pygame.sprite.Sprite):
         # others
         self.animate_sequence = "idle"
 
+        # observation
+        self.can_save_observation = False
+        self.observation_count = 0
+        
+        self.internal_event = None
+        self.old_internal_event = None
+        self.outside_event = None
+        self.old_outside_event = None
+        self.observed_event = None
+        self.old_observed_event = None
+        
+        self.first_observation = False
+        
     def hitbox_collide(
         self, sprite1: pygame.sprite.Sprite, sprite2: pygame.sprite.Sprite
     ):
@@ -115,12 +128,11 @@ class Entity(pygame.sprite.Sprite):
 
         if self.vulnerable:
             # save attacked event
-            self.event_status = f"attacked by {attacker.full_name}"
+            self.outside_event = f"attacked by {attacker.full_name}"
             self.vulnerable = False
             self.hit_sound.play()
             self.vulnerable_time = pygame.time.get_ticks()
             # save observation
-            self.can_save_observation = True
 
             attack_type = attacker.attack_type
             if attacker.sprite_type == "player":
@@ -156,37 +168,42 @@ class Entity(pygame.sprite.Sprite):
 
             if self.health <= 0:
                 # self.action = "dead"
-                self.event_status = "dead, killed by " + attacker.full_name
-                attacker.event_status = f"killed {self.full_name}"
+                self.outside_event = "dead, killed by " + attacker.full_name
+                attacker.outside_event = f"killed {self.full_name}"
                 # save dead event
-                self.can_save_observation = True
 
                 self.animation_player.create_particles(
                     self.name, self.rect.center, [self.groups[0]]
                 )
 
-                if self.sprite_type == "enemy":
-                    self.respawn()
+            
+                self.death_sound.play()
+                self.add_exp(attacker, self.exp)
+            
                 # if self.status_bars:
                 #     self.status_bars.kill()
                 # if self.text_bubble:
                 #     self.text_bubble.kill()
 
-                self.death_sound.play()
-                self.add_exp(attacker, self.exp)
-                return True
+                
+            
+            # self.can_save_observation = True
+
+
 
     def get_heal(self, healer: "Entity"):
         self.health += healer.attack_damage
         if self.health > self.max_health:
+            self.outside_event = f"fully healed by {healer.full_name}"
+            healer.outside_event = f"healed {self.full_name}"
             self.health = self.max_health
 
         self.animation_player.create_particles(
             "heal", self.hitbox.center, [self.groups[0]]
         )
 
-        self.event_status = f"healed by {healer.full_name}"
-        self.can_save_observation = True
+        self.outside_event = f"healed by {healer.full_name}"
+        # self.can_save_observation = True
 
     def add_exp(self, entity: "Entity", amount):
         entity.exp += amount
