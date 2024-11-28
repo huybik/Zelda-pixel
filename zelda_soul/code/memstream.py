@@ -38,13 +38,14 @@ class MemoryStream:
                 json.dump(memories, file, indent=2)
                 
     
-    def read_last_n_records(self, filename,n ):
+    def read_last_n_records(self, filename,n=None ):
         try:
             with open(f"../memory/{filename}", "r") as f:
                 try:
                     records = json.load(f)
-                    if len(records) >= n:
-                        return records[-n:]
+                    if n:
+                        if len(records) >= n:
+                            return records[-n:]
                 except json.JSONDecodeError:
                     records = []
             return records

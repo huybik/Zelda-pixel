@@ -193,7 +193,7 @@ class Entity(pygame.sprite.Sprite):
 
     def get_heal(self, healer: "Entity"):
         self.health += healer.attack_damage
-        if self.health > self.max_health:
+        if self.health >= self.max_health:
             self.outside_event = f"fully healed by {healer.full_name}"
             healer.outside_event = f"healed {self.full_name}"
             self.health = self.max_health

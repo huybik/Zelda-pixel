@@ -63,11 +63,12 @@ class API:
                 lambda: self.client.create_chat_completion(
                     messages=messages,
                     temperature=0,
-                    # max_tokens=128,
-                    # repeat_penalty=1.5,
+                    # max_tokens=256,
+                    # repeat_penalty=1.1,
+                    # stop=["END"],
                     )
                 )
-                ai_response = response["choices"][0]["message"]["content"].strip()
+                ai_response = response["choices"][0]["message"]["content"].strip()  
             else:
                 response = await loop.run_in_executor(
                     None,  # None uses the default executor
@@ -112,7 +113,44 @@ class Persona:
         self.summary = None
 
         # actions
-
+    def get_actions(self, last_observation):
+        entities = last_observation["nearby_entities"]
+        objects = last_observation["nearby_objects"]
+        
+        target_entities = None
+        target_resources = None
+        
+        if entities:
+            target_entities = "".join([entity["entity_name"] for entity in entities])
+       
+        if objects:
+            target_resources = "".join([object["object_name"] for object in objects])
+        
+            
+        return target_entities, target_resources
+    def get_observations(self, observations):
+        result = [
+            {
+                "timestamp": entry["timestamp"],
+                "observations": entry["self"].get("observations"),
+            }
+                    for entry in observations
+        ]
+        
+        return json.dumps(result)
+    
+    def get_progress(self, observations):
+        result = [
+            {
+                "timestamp": entry["timestamp"],
+                "observations": entry["self"].get("observations"),
+                "stats": entry["self"].get("stats"),
+            }
+                    for entry in observations
+        ]
+        
+        return json.dumps(result)
+    
     async def fetch_decision(
         self,
         entity: "Enemy",
@@ -121,22 +159,44 @@ class Persona:
 
         # observation = self.memory.save_observation(entity, player, entities, objects)
         summary_file = f"summary_{entity.full_name}.json"
-        observation_file = f"stream_{entity.full_name}.json"
         summary = self.memory.read_last_n_records(summary_file,1)
-        observation = self.memory.read_last_n_records(observation_file, 1)
+        
+        stream_file = f"stream_{entity.full_name}.json"
+        stream_data = self.memory.read_last_n_records(stream_file)
+        
+        observations = self.get_observations(stream_data)
+        target_entities, target_resources = self.get_actions(stream_data[-1])
+        
+        prompt = f"""
+            Context:
+            You are {entity.full_name}, and you are {entity.characteristic}.
+            Priority to survive using all actions available.
+            
+            'progress summary': {summary}
+            'Observations':
+            {observations}
+            
+            Guidelines for output 'Next step':
+            
+            
+            "action": One from ("attack", "runaway", "heal") target entity or ("mine") resource.
+            "target_name": Your target name
+            "vigilant": A score from 0 to 100 indicating your current vigilant level.
+            "reason": a single sentence.
+            
+            Can only target following entities:
+            {target_entities}
+            And can only mine following resources:
+            {target_resources}
+            If both are empty, set target_name to "None".
 
-        prompt = prompt_template.format(
-            full_name=entity.full_name,
-            characteristic=entity.characteristic,
-            summary=summary,
-            # observation=None,
-            observation=observation,
-        )
-
+            Respond in single JSON with the format of "Next step":{{"action": string,"target_name": string,"vigilant": int,"reason": single sentence}}
+            'Next step':
+            """
         try:
             response = await self.api.get_response(user_input=prompt)
             try:
-                # print(f"prompt: {prompt}\n")
+                print(f"{entity.full_name} prompt: {prompt}\n")
                 
                 response = '{' + response.split('{')[-1].split('}')[0] + '}'
                 print(f"{entity.full_name} decision: {response} \n")
@@ -159,22 +219,30 @@ class Persona:
         threshold=50,
     ):
         # memory_stream = self.memory.read_memory(entity)
-        memory_file = f"stream_{entity.full_name}.json"
-        summary_file = f"summary_{entity.full_name}.json"
+        stream_file = f"stream_{entity.full_name}.json"
+        stream_data = self.memory.read_last_n_records(stream_file)
+        progress = self.get_progress(stream_data)
         
-        memory_stream = self.memory.read_last_n_records(memory_file, 1)
-        # memory_stream = self.memory.read_last_n_records(memory_file, OBSERVATION_TO_SUMMARY)
+        summary_file = f"summary_{entity.full_name}.json"
         summary = self.memory.read_last_n_records(summary_file, 1)
+        
+        
+        # memory_stream = self.memory.read_last_n_records(memory_file, 2)
+        # memory_stream = self.memory.read_last_n_records(memory_file, OBSERVATION_TO_SUMMARY)
 
-        prompt = summary_template.format(memory_stream=memory_stream,
-                              summary = summary,
-                              threshold=threshold,
-                              )
+        prompt = f"""
+            Context:
+            'history':{progress}
+            'last summary': {summary}
             
+            Summarize your thought in plan text in short paragraph less than {threshold} words.
+            'Your thought': """
+            
+        print(prompt)
         try:
             # print(f"prompt: {prompt}\n")
             response = await self.api.get_response(user_input=prompt)
-            print(f"{entity.full_name} summary: {response} \n")
+            # print(f"{entity.full_name} summary: {response} \n")
 
             # self.memory.write_data(response, "summary", full_name)
             self.summary = response

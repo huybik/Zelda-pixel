@@ -378,6 +378,12 @@ class Enemy(Entity):
             for other_entity in entities:
                 if other_entity != self:
                     memory_entry["nearby_entities"].append(self.observation_template(other_entity))
+        distance, _ = get_distance_direction(self, player)
+        
+        # Get player        
+        if distance <= self.notice_radius:
+            memory_entry["nearby_entities"].append(self.observation_template(player)) 
+        
 
         # Get nearby objects within notice radius
         if objects:
@@ -390,9 +396,6 @@ class Enemy(Entity):
                     "y": obj.rect.centery
                 },
             })
-
-        # Add player observation
-        memory_entry["player"] = self.observation_template(player)
 
         filename = f"stream_{self.full_name}.json"
         self.memory.write_memory(memory_entry, filename, threshold=MEMORY_SIZE)
@@ -407,17 +410,22 @@ class Enemy(Entity):
 
         observation = {
             "entity_name": entity.full_name,
+            "action": entity.action,
+            "target_name": entity.target_name,
+            "observations": {
             "intention": entity.internal_event,
             "event": entity.outside_event,
             "observed":entity.observed_event,
-            "action": entity.action,
+            },
             "location": {
                 "x": entity.rect.centerx,
                 "y": entity.rect.centery
             },
+            "stats": {
             "health": health,
             "energy": energy,
             "experience": int(entity.exp)
+            }
         }
 
         if entity.target_location:
@@ -440,7 +448,7 @@ class Enemy(Entity):
             "sparkle", target.hitbox.center, [self.visible_sprite]
         )
         if self.timber >= self.max_timber:
-            self.outside_event = "out of inventory for timber"
+            self.outside_event = f"can't mine {target.full_name} because of full inventory"
             self.timber = self.max_timber
         else:
             self.timber += 1
@@ -457,6 +465,7 @@ class Enemy(Entity):
         self.energy = self.max_health
         self.max_energy = self.max_health
         self.vulnerable = False
+        self.outside_event = "respawn"
 
     def upgrade(self):
         if self.exp >= self.upgrade_cost:
@@ -480,6 +489,8 @@ class Enemy(Entity):
             self.action = decision["action"]
             self.reason = decision["reason"]
             
+            if decision["target_name"] == "None":
+                self.target_name = None
             
             # self.target_name = "None"
             # self.target_name = "player"
@@ -493,7 +504,7 @@ class Enemy(Entity):
             self.set_decision(self.persona.decision)
             self.current_decision = self.persona.decision
 
-        if not self.target_name or self.target_name == "None":
+        if not self.target_name:
             current_time = pygame.time.get_ticks()
             if (
                 current_time - self.last_internal_move_update
@@ -658,17 +669,22 @@ class Enemy(Entity):
         self.upgrade()
     def check_death(self):
         if self.health <= 0:
-            self.respawn()
+            self.kill()
+            self.status_bars.kill()
+            self.text_bubble.kill()
+            # self.respawn()
     
     def control_update(self, player: "Player", entities: list["Entity"], objects: list["Tile"], distance_player):
         
         # init
+        
         if not self.first_observation:
             self.save_observation(player, entities, objects)
             self.first_observation = True
             
         if not self.task_decision:
             self.decide(distance_player)
+            
         if not self.task_summary:
             self.summary(distance_player)
 
@@ -710,15 +726,11 @@ class Enemy(Entity):
             # self.idle()
             pass
         else:
-            self.interaction(player, nearby_entities, nearby_objects)
+            pass
+        self.interaction(player, nearby_entities, nearby_objects)
             # self.decide(distance)
 
-        self.status_bars.update_rect(
-            self  # Max energy (if you want to add energy system later)
-        )
-        # update bubble
-        if self.reason:
-            self.text_bubble.update_text(f"{self.action} {self.target_name}: {self.reason}", self.rect)
+        
         
         self.move(self.target_location, self.speed, objects)
 
@@ -726,3 +738,12 @@ class Enemy(Entity):
 
 
         self.check_death()
+        
+        
+        # update tooltips
+        self.status_bars.update_rect(
+            self  # Max energy (if you want to add energy system later)
+        )
+        if self.reason:
+            self.text_bubble.update_text(f"{self.action} {self.target_name}: {self.reason}", self.rect)
+        

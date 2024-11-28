@@ -7,6 +7,7 @@ TILESIZE = 64
 
 # model
 MODEL_PATH = "../model/Llama-3.2-1B-Instruct.Q4_K_M.gguf"
+# MODEL_PATH = "../model/Vikhr-Qwen-2.5-0.5B-instruct-Q4_K_M.gguf"
 INFERENCE_MODE = "local"
 CONTEXT_LENGTH = 8192
 CHAT_INTERVAL = 24000
@@ -16,7 +17,7 @@ GPU=-1 # 0 for CPU
 # event
 OBSERVATION_COOLDOWN = 2000
 MEMORY_SIZE = 3
-SUMMARY_SIZE = 5
+SUMMARY_SIZE = 3
 OBSERVATION_TO_SUMMARY = 3
 # ui
 BAR_HEIGHT = 20
@@ -128,7 +129,7 @@ monster_data = {
         "resistance": 3,
         "act_radius": 200,
         "notice_radius": 600,
-        "characteristic": "support racoon",
+        "characteristic": "oppotunist",
     },
     "bamboo": {
         "id": 390,
@@ -141,9 +142,13 @@ monster_data = {
         "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
-        "characteristic": "perfer attacking player",
+        "characteristic": "player enemy",
     },
 }
+
+
+
+
 
 
 prompt_template = """
@@ -160,10 +165,7 @@ prompt_template = """
             Context:
 
             You are {full_name}, and you are {characteristic}.
-            Priority: Survive using all actions available.
-            Killing entity grants experience points (exp).
-            Mining restores lost HP and energy while granting exp.
-            You are upgraded every 100 exp.
+            Priority to survive using all actions available.
 
             'Observation': {observation}
             'Memory': {summary}
@@ -174,15 +176,8 @@ prompt_template = """
             """
 
 summary_template = """
-            Use records from 'memory_stream' to think about your current situation in short paragraph less than {threshold} words. "last_summary" provide context for your last situation.
+            Use records from 'memory_stream' to summarize your progress in short paragraph less than {threshold} words. "last_summary" provide context for your last progress.
             "memory_stream": {memory_stream}
             "last_summary": {summary}
             Your current situation: """
         
-action_template = """ 
-            Posible actions:
-            attack: {attack_targets}
-            runaway: {runaway_targets}
-            heal: {heal_targets}
-            mine: {mine_targets}
-            """
