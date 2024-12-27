@@ -14,7 +14,9 @@ from particles import AnimationPlayer
 from upgrade import Upgrade
 from camera import YSortCameraGroup
 from magic import MagicPlayer
-from persona import API
+
+# from persona import API
+
 # from queue import PriorityQueue
 import asyncio
 from priorityqueue import PriorityQueueWithUpdate
@@ -38,7 +40,7 @@ class Level:
 
         # user interface
         self.ui = UI()
-        self.api = API(mode=INFERENCE_MODE)
+        # self.api = API(mode=INFERENCE_MODE)
         # self.text_bubble = TextBubble()
 
         # sprite setup
@@ -50,7 +52,7 @@ class Level:
         # particles
         self.animation_player = AnimationPlayer()
         self.magic_player = MagicPlayer(self.animation_player)
-        
+
         # global task queue for chat
 
     def create_map(self):
@@ -143,8 +145,8 @@ class Level:
                                         ],
                                         self.obstacle_sprites,
                                         self.visible_sprites,
-                                        self.api,
-                                        self.global_queue
+                                        # self.api,
+                                        self.global_queue,
                                     )
                                 )
 
@@ -209,12 +211,9 @@ class Level:
             self.upgrade.display()
         else:
             self.visible_sprites.update()
-            self.visible_sprites.enemy_update(
-                self.player, self.entities, self.objects
-            )
+            self.visible_sprites.enemy_update(self.player, self.entities, self.objects)
             self.collision()
 
-           
             if not self.global_queue.empty():
                 if self.decision_task is None or self.decision_task.done():
                     priority, task = self.global_queue.get()
@@ -225,15 +224,13 @@ class Level:
                             timeout=60.0,
                         )
                     )
-                
+
             # Give control back to event loop to process background tasks
             await asyncio.sleep(0)
-            
+
             # # Check if task failed
             # if self.decision_task is not None and self.decision_task.done():
             #     try:
             #         self.decision_task.result()
             #     except Exception as e:
             #         print(f"Task failed: {e}")
-
-

@@ -1,4 +1,3 @@
-
 # game setup
 WIDTH = 1280
 HEIGTH = 720
@@ -12,7 +11,7 @@ INFERENCE_MODE = "local"
 CONTEXT_LENGTH = 8192
 CHAT_INTERVAL = 24000
 SUMMARY_INTERVAL = 72000
-GPU=-1 # 0 for CPU
+GPU = -1  # 0 for CPU
 
 # event
 OBSERVATION_COOLDOWN = 2000
@@ -129,7 +128,7 @@ monster_data = {
         "resistance": 3,
         "act_radius": 200,
         "notice_radius": 600,
-        "characteristic": "oppotunist",
+        "characteristic": "help player",
     },
     "bamboo": {
         "id": 390,
@@ -142,13 +141,9 @@ monster_data = {
         "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
-        "characteristic": "player enemy",
+        "characteristic": "enemy of player",
     },
 }
-
-
-
-
 
 
 prompt_template = """
@@ -180,4 +175,3 @@ summary_template = """
             "memory_stream": {memory_stream}
             "last_summary": {summary}
             Your current situation: """
-        

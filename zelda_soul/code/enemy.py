@@ -1,6 +1,12 @@
 import pygame
 from entity import Entity
-from settings import monster_data, CHAT_INTERVAL, SUMMARY_INTERVAL, OBSERVATION_TO_SUMMARY, MEMORY_SIZE
+from settings import (
+    monster_data,
+    CHAT_INTERVAL,
+    SUMMARY_INTERVAL,
+    OBSERVATION_TO_SUMMARY,
+    MEMORY_SIZE,
+)
 from debug import debug
 import time
 from tooltips import TextBubble, StatusBars
@@ -13,11 +19,11 @@ import random
 from priorityqueue import PriorityQueueWithUpdate
 from typing import TYPE_CHECKING
 from queue import PriorityQueue
+
 if TYPE_CHECKING:
     from entity import Entity
     from tile import Tile
     from player import Player
-
 
 
 # from ui import UI
@@ -33,8 +39,8 @@ class Enemy(Entity):
         groups,
         obstacle_sprites,
         visible_sprite,
-        api,
-        global_queue : PriorityQueueWithUpdate,
+        # api,
+        global_queue: PriorityQueueWithUpdate,
     ):
 
         # general setup
@@ -42,7 +48,7 @@ class Enemy(Entity):
         self.sprite_type = "enemy"
         self.groups = groups
         self.memory = MemoryStream()
-        self.persona = Persona(api)
+        self.persona = Persona()
         self.global_queue = global_queue
 
         # graphic setup
@@ -109,13 +115,11 @@ class Enemy(Entity):
         self.task_summary = None
 
         self.current_decision = None
-        
 
         # cooldowns
         # self.observation_time = 0
         # self. OBSERVATION_TO_SUMMARY = OBSERVATION_COOLDOWN
-        
-        
+
         self.vulnerable = True
         self.vulnerable_time = 0
         self.vulnerable_duration = 1000
@@ -137,15 +141,11 @@ class Enemy(Entity):
         # upgrade cost
         self.upgrade_cost = 100
         self.upgrade_percentage = 0.01  # this increase cost and stat
-        
-        
+
         # inventory
         self.timber = 0
         self.max_timber = 10
-        
-        
-        
-        
+
     def cooldown(self):
         # this cooldown to prevent attack animation spam
         current_time = pygame.time.get_ticks()
@@ -180,7 +180,6 @@ class Enemy(Entity):
                 special_flags=pygame.BLEND_RGBA_MULT,
             )
             self.image = tinted_image
-
 
     def move(
         self,
@@ -344,7 +343,11 @@ class Enemy(Entity):
             target.get_damage(attacker=self)
 
     def heal(self, target: "Entity"):
-        if self.energy > 0 and target.health < target.max_health and self.energy > self.attack_damage:
+        if (
+            self.energy > 0
+            and target.health < target.max_health
+            and self.energy > self.attack_damage
+        ):
             self.heal_sound.play()
 
             # action
@@ -354,7 +357,7 @@ class Enemy(Entity):
                 self.energy = 0
 
             target.get_heal(healer=self)
-            
+
     def save_observation(
         self,
         player: "Player",
@@ -370,32 +373,36 @@ class Enemy(Entity):
             "timestamp": timestamp,
             "self": self.observation_template(self),
             "nearby_entities": [],
-            "nearby_objects": []
+            "nearby_objects": [],
         }
 
         # Get nearby entities within notice radius
         if entities:
             for other_entity in entities:
                 if other_entity != self:
-                    memory_entry["nearby_entities"].append(self.observation_template(other_entity))
+                    memory_entry["nearby_entities"].append(
+                        self.observation_template(other_entity)
+                    )
         distance, _ = get_distance_direction(self, player)
-        
-        # Get player        
+
+        # Get player
         if distance <= self.notice_radius:
-            memory_entry["nearby_entities"].append(self.observation_template(player)) 
-        
+            memory_entry["nearby_entities"].append(self.observation_template(player))
 
         # Get nearby objects within notice radius
         if objects:
-            obj = min(objects, key=lambda obj: get_distance_direction(self, obj)[0], default=None)
-        
-            memory_entry["nearby_objects"].append({
-                "object_name": obj.full_name,
-                "location": {
-                    "x": obj.rect.centerx,
-                    "y": obj.rect.centery
-                },
-            })
+            obj = min(
+                objects,
+                key=lambda obj: get_distance_direction(self, obj)[0],
+                default=None,
+            )
+
+            memory_entry["nearby_objects"].append(
+                {
+                    "object_name": obj.full_name,
+                    "location": {"x": obj.rect.centerx, "y": obj.rect.centery},
+                }
+            )
 
         filename = f"stream_{self.full_name}.json"
         self.memory.write_memory(memory_entry, filename, threshold=MEMORY_SIZE)
@@ -413,42 +420,40 @@ class Enemy(Entity):
             "action": entity.action,
             "target_name": entity.target_name,
             "observations": {
-            "intention": entity.internal_event,
-            "event": entity.outside_event,
-            "observed":entity.observed_event,
+                "intention": entity.internal_event,
+                "event": entity.outside_event,
+                "observed": entity.observed_event,
             },
-            "location": {
-                "x": entity.rect.centerx,
-                "y": entity.rect.centery
-            },
+            "location": {"x": entity.rect.centerx, "y": entity.rect.centery},
             "stats": {
-            "health": health,
-            "energy": energy,
-            "experience": int(entity.exp)
-            }
+                "health": health,
+                "energy": energy,
+                "experience": int(entity.exp),
+            },
         }
 
         if entity.target_location:
             observation["previous_moving_to"] = {
                 "x": int(entity.target_location.x),
-                "y": int(entity.target_location.y)
+                "y": int(entity.target_location.y),
             }
         if entity.target_name:
             observation["previous_target_name"] = entity.target_name
-        
-        return observation
 
+        return observation
 
     def mine(self, target: "Tile"):
 
         # save status
         # action
-        
+
         self.animation_player.create_particles(
             "sparkle", target.hitbox.center, [self.visible_sprite]
         )
         if self.timber >= self.max_timber:
-            self.outside_event = f"can't mine {target.full_name} because of full inventory"
+            self.outside_event = (
+                f"can't mine {target.full_name} because of full inventory"
+            )
             self.timber = self.max_timber
         else:
             self.timber += 1
@@ -488,10 +493,10 @@ class Enemy(Entity):
             self.vigilant = int(decision["vigilant"])
             self.action = decision["action"]
             self.reason = decision["reason"]
-            
+
             if decision["target_name"] == "None":
                 self.target_name = None
-            
+
             # self.target_name = "None"
             # self.target_name = "player"
             # self.action = "runaway"
@@ -517,12 +522,12 @@ class Enemy(Entity):
             target = self.target_select(player, entities, objects)
             if target:
                 self.internal_event = f"{self.action} {target.full_name}"
-                
+
                 distance, _ = get_distance_direction(self, target)
                 if distance <= self.notice_radius:
                     if distance > self.act_radius:
-                        
-                            # internal action update
+
+                        # internal action update
                         current_time = pygame.time.get_ticks()
                         if (
                             current_time - self.last_internal_move_update
@@ -530,8 +535,7 @@ class Enemy(Entity):
                         ):
                             self.internal_move_update(target)
                             self.last_internal_move_update = current_time
-                        
-                        
+
                     elif distance <= self.act_radius and self.can_act:
 
                         if self.action == "attack":
@@ -542,16 +546,16 @@ class Enemy(Entity):
                             self.mine(target)
                         elif self.action == "runaway":
                             self.runaway(target)
-                        
 
                         self.can_act = False
                         self.animate_sequence = self.action
                         self.act_time = pygame.time.get_ticks()
-                        
+
                         for entity in entities:
                             if entity != self and entity != target:
-                                entity.observed_event = f"{self.full_name} {self.action} {target.full_name}"
-
+                                entity.observed_event = (
+                                    f"{self.full_name} {self.action} {target.full_name}"
+                                )
 
     def target_select(
         self, player: "Player", entities: list["Entity"], objects: list["Tile"]
@@ -576,24 +580,22 @@ class Enemy(Entity):
 
     def wander(self):
         # wander arround if no target
-            # walk aimlessly for a bit to find new target
-            self.target_location = pygame.math.Vector2(
-                random.randint(
-                    int(self.starting_point[0] - 100), int(self.starting_point[0] + 100)
-                ),  # Random from starting location
-                random.randint(
-                    int(self.starting_point[1] - 100), int(self.starting_point[1] + 100)
-                ),  # Random from starting location
-            )
-            self.action = "move"
+        # walk aimlessly for a bit to find new target
+        self.target_location = pygame.math.Vector2(
+            random.randint(
+                int(self.starting_point[0] - 100), int(self.starting_point[0] + 100)
+            ),  # Random from starting location
+            random.randint(
+                int(self.starting_point[1] - 100), int(self.starting_point[1] + 100)
+            ),  # Random from starting location
+        )
+        self.action = "move"
 
     def runaway(self, target):
         distance, direction = get_distance_direction(self, target)
         if distance != 0:
             self.direction = -direction.normalize()
         self.target_location = pygame.math.Vector2()
-
-     
 
     def idle(self):
         self.action = "idle"
@@ -619,35 +621,32 @@ class Enemy(Entity):
                 or self.action == "heal"
             ):
                 self.target_location = pygame.math.Vector2(target.hitbox.center)
-                
 
-    def decide(self,distance):
+    def decide(self, distance):
         if not self.task_decision:
             self.task_decision = self.persona.fetch_decision(self)
             self.global_queue.put(priority=distance, task=self.task_decision)
-            
-        
+
         elif not self.global_queue.has(self.task_decision):
-                # update priority for old task
+            # update priority for old task
             self.task_decision = self.persona.fetch_decision(self)
-            self.global_queue.put( distance, self.task_decision)
-        
+            self.global_queue.put(distance, self.task_decision)
+
         elif self.global_queue.has(self.task_decision):
             # update priority for old task
-            self.global_queue.put( distance, self.task_decision)
+            self.global_queue.put(distance, self.task_decision)
 
         # update priority
 
         print("Queue size:", self.global_queue.qsize())
-        
-            
+
     def summary(self, distance):
         if not self.task_summary:
             self.task_summary = self.persona.summary_context(self)
             self.global_queue.put(distance, self.task_summary)
         # if current_time - self.last_summary_time >= self.summary_interval or not self.task_summary:
         elif not self.global_queue.has(self.task_summary):
-                # update priority for old task
+            # update priority for old task
             self.task_summary = self.persona.summary_context(self)
             self.global_queue.put(distance, self.task_summary)
         elif self.global_queue.has(self.task_summary):
@@ -655,10 +654,7 @@ class Enemy(Entity):
             self.global_queue.put(distance, self.task_summary)
 
         print("Queue size:", self.global_queue.qsize())
-        
-            
-            
-        
+
     def update(self):
         # main update for sprite
         # if self.action == "move":
@@ -667,24 +663,31 @@ class Enemy(Entity):
         self.cooldown()
         self.flickering()
         self.upgrade()
+
     def check_death(self):
         if self.health <= 0:
             self.kill()
             self.status_bars.kill()
             self.text_bubble.kill()
             # self.respawn()
-    
-    def control_update(self, player: "Player", entities: list["Entity"], objects: list["Tile"], distance_player):
-        
+
+    def control_update(
+        self,
+        player: "Player",
+        entities: list["Entity"],
+        objects: list["Tile"],
+        distance_player,
+    ):
+
         # init
-        
+
         if not self.first_observation:
             self.save_observation(player, entities, objects)
             self.first_observation = True
-            
+
         if not self.task_decision:
             self.decide(distance_player)
-            
+
         if not self.task_summary:
             self.summary(distance_player)
 
@@ -694,33 +697,41 @@ class Enemy(Entity):
                 if entity != self:
                     entity.observed_event = f"{self.full_name} {self.outside_event}"
 
-
-        if self.observed_event != self.old_observed_event or self.outside_event != self.old_outside_event:
-            self.old_observed_event = self.observed_event   
+        if (
+            self.observed_event != self.old_observed_event
+            or self.outside_event != self.old_outside_event
+        ):
+            self.old_observed_event = self.observed_event
             self.old_outside_event = self.outside_event
 
             self.save_observation(player, entities, objects)
-                    
+
             # set new action
             if self.observation_count >= MEMORY_SIZE:
                 self.observation_count = 0
                 self.summary(distance_player)
 
             self.decide(distance_player)
-        
 
-        
     def enemy_update(
         self, player: "Player", entities: list["Entity"], objects: list["Tile"]
     ):
         distance, _ = get_distance_direction(self, player)
         # knockback
-        
+
         # shortlist entitiees and objects within notice radius
         # shortlist entities and objects within notice radius
-        nearby_entities = [entity for entity in entities if get_distance_direction(self, entity)[0] <= self.notice_radius and entity != self]
-        nearby_objects = [obj for obj in objects if get_distance_direction(self, obj)[0] <= self.notice_radius]
-        
+        nearby_entities = [
+            entity
+            for entity in entities
+            if get_distance_direction(self, entity)[0] <= self.notice_radius
+            and entity != self
+        ]
+        nearby_objects = [
+            obj
+            for obj in objects
+            if get_distance_direction(self, obj)[0] <= self.notice_radius
+        ]
 
         if distance > self.notice_radius:
             # self.idle()
@@ -728,22 +739,19 @@ class Enemy(Entity):
         else:
             pass
         self.interaction(player, nearby_entities, nearby_objects)
-            # self.decide(distance)
+        # self.decide(distance)
 
-        
-        
         self.move(self.target_location, self.speed, objects)
 
-        self.control_update(player, nearby_entities, nearby_objects, distance)    
-
+        self.control_update(player, nearby_entities, nearby_objects, distance)
 
         self.check_death()
-        
-        
+
         # update tooltips
         self.status_bars.update_rect(
             self  # Max energy (if you want to add energy system later)
         )
         if self.reason:
-            self.text_bubble.update_text(f"{self.action} {self.target_name}: {self.reason}", self.rect)
-        
+            self.text_bubble.update_text(
+                f"{self.action} {self.target_name}: {self.reason}", self.rect
+            )
