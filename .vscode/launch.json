@@ -8,11 +8,11 @@
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
+            // "cwd": "/Users/huy/MEGAsync/Projects/_study/game_design/zelda-soul/code",
             // "program": "${file}",
-            "program": "main.py",
-            "pythonPath":"/Users/huy/.pyenv/versions/3.12.7/envs/base/bin/python",
+            "program": "zelda_soul/code/test.py",
             "console": "integratedTerminal",
-            "cwd": "${fileDirname}",
+            // "cwd": "${fileDirname}",
         }
     ]
 }

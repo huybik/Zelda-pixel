@@ -14,7 +14,7 @@ class YSortCameraGroup(pygame.sprite.Group):
         self.offset = pygame.math.Vector2()
 
         # creating the floor, must load first before other things
-        self.floor_surf = pygame.image.load("../graphics/tilemap/ground.png").convert()
+        self.floor_surf = pygame.image.load("../graphics/tilemap/ground.jpg").convert()
         self.floor_rect = self.floor_surf.get_rect(topleft=(0, 0))
 
     def custom_draw(self, player: pygame.sprite.Sprite):
@@ -47,12 +47,10 @@ class YSortCameraGroup(pygame.sprite.Group):
 
         # Run AI decisions concurrently with timeout
         # Create tasks for all enemies
-        
+
         # await asyncio.gather(
         #     *(
         #         enemy.enemy_decision(player, entities, objects)
         #         for enemy in enemy_sprites
         #     )
         # )
-        
-        

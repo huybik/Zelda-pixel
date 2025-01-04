@@ -56,17 +56,10 @@ class Level:
         # global task queue for chat
 
     def create_map(self):
-        layouts = {
-            "boundary": import_csv_layout("../map/map_FloorBlocks.csv"),
-            "grass": import_csv_layout("../map/map_Grass.csv"),
-            "object": import_csv_layout("../map/map_Objects.csv"),
-            "entities": import_csv_layout("../map/map_Entities.csv"),
-        }
         graphics = {
             "grass": import_folder("../graphics/Grass"),
             "object": import_folder("../graphics/objects"),
         }
-
         for sprite_type, layout in layouts.items():
             for row_index, row in enumerate(layout):
                 for col_index, col in enumerate(row):
@@ -158,6 +151,38 @@ class Level:
 
         self.weapon = Weapon(self.player, [self.visible_sprites, self.attack_sprites])
         # self.magic =
+
+    def merge_map(self):
+        floor = import_csv_layout("../map/map_FloorBlocks.csv")
+        for row_index, row in enumerate(floor):
+            for col_index, col in enumerate(row):
+                # col is value of map plan
+                if col != "-1":
+                    x = col_index * TILESIZE
+                    y = row_index * TILESIZE
+                    full_name = "floor"
+                if col == 1:
+                    # create player
+                elif col == 2:
+                    # create creature
+                elif col == 3:
+                    # create resource edible
+                elif col == 4:
+                    # create resource
+                        surface = random.choice(graphics[sprite_type])
+                        full_name = "grass"
+                        Tile(
+                            (x, y),
+                            full_name,
+                            [
+                                self.visible_sprites,
+                                self.obstacle_sprites,
+                                self.attackable_sprites,
+                            ],
+                            sprite_type,
+                            surface,
+                        )
+        return final_map
 
     def collision(self):
 

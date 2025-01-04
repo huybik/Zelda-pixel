@@ -1,4 +1,11 @@
 import pygame
+from os import walk
+from math import sin
+from particles import AnimationPlayer
+from magic import MagicPlayer
+from tooltips import StatusBars
+from support import get_distance_direction
+import pygame
 from entity import Entity
 from settings import (
     monster_data,
@@ -18,7 +25,6 @@ from support import get_distance_direction, wave_value
 import random
 from priorityqueue import PriorityQueueWithUpdate
 from typing import TYPE_CHECKING
-from queue import PriorityQueue
 
 if TYPE_CHECKING:
     from entity import Entity
@@ -80,24 +86,12 @@ class Enemy(Entity):
         self.path = None
 
         # stats
-        self.name = name
         monster_info = monster_data[self.name]
-        self.monster_info = monster_info
-
-        self.health = monster_info["health"]
-        self.max_health = monster_info["health"]
+        self.name = name
+        self.full_name = full_name
         self.exp = monster_info["exp"]
-        self.speed = monster_info["speed"]
-        self.attack_damage = monster_info["damage"]
-        self.resistance = monster_info["resistance"]
-        self.act_radius = monster_info["act_radius"]
-        self.notice_radius = monster_info["notice_radius"]
         self.attack_type = monster_info["attack_type"]
         self.characteristic = monster_info["characteristic"]
-        self.full_name = full_name
-
-        self.energy = self.max_health
-        self.max_energy = self.max_health
         self.vigilant = 0
 
         # ChatGPT API params
@@ -110,10 +104,8 @@ class Enemy(Entity):
         self.internal_move_update_interval = 500  # ticks
 
         self.reason = None
-
         self.task_decision = None
         self.task_summary = None
-
         self.current_decision = None
 
         # cooldowns
@@ -180,161 +172,6 @@ class Enemy(Entity):
                 special_flags=pygame.BLEND_RGBA_MULT,
             )
             self.image = tinted_image
-
-    def move(
-        self,
-        target: pygame.math.Vector2,
-        speed: int,
-        objects: list = None,
-        tile_size=64,
-    ):
-        current = pygame.math.Vector2(self.hitbox.centerx, self.hitbox.centery)
-
-        def to_grid(pos, tile_size):
-            return (int(pos.x // tile_size), int(pos.y // tile_size))
-
-        def to_world(grid, tile_size):
-            return pygame.math.Vector2(
-                grid[0] * tile_size + tile_size / 2,
-                grid[1] * tile_size + tile_size / 2,
-            )
-
-        def get_occupied_grids(rect, tile_size):
-            """Returns all grid positions occupied by a rectangular obstacle."""
-            grids = set()
-            start_x = int(rect.left // tile_size)
-            start_y = int(rect.top // tile_size)
-            end_x = int(rect.right // tile_size)
-            end_y = int(rect.bottom // tile_size)
-
-            for x in range(start_x, end_x + 1):
-                for y in range(start_y, end_y + 1):
-                    grids.add((x, y))
-            return grids
-
-        def find_nearest_walkable(grid, obstacle_grids):
-            # Check all 4-connected neighbors
-            neighbors = [
-                (grid[0] + dx, grid[1] + dy)
-                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]
-            ]
-            # Return the first valid neighbor that is not an obstacle
-            for neighbor in neighbors:
-                if neighbor not in obstacle_grids:
-                    return neighbor
-            return None  # No valid adjacent grid
-
-        def astar_pathfinding(start, goal, obstacles, tile_size):
-            start_grid = to_grid(start, tile_size)
-            goal_grid = to_grid(goal, tile_size)
-
-            # Mark all occupied grids
-            obstacle_grids = set()
-            for obj in obstacles:
-                obstacle_grids.update(get_occupied_grids(obj, tile_size))
-
-            # Adjust goal if it's in the obstacle grid
-            if goal_grid in obstacle_grids:
-                goal_grid = find_nearest_walkable(goal_grid, obstacle_grids)
-                if not goal_grid:
-                    return []  # No valid path available
-
-            # Heuristic function (Manhattan distance)
-            def heuristic(a, b):
-                return abs(a[0] - b[0]) + abs(a[1] - b[1])
-
-            # A* setup
-            open_set = PriorityQueue()
-            open_set.put((0, start_grid))
-            came_from = {}
-            g_score = {start_grid: 0}
-            f_score = {start_grid: heuristic(start_grid, goal_grid)}
-
-            while not open_set.empty():
-                _, current_grid = open_set.get()
-
-                if current_grid == goal_grid:
-                    # Reconstruct path
-                    path = []
-                    while current_grid in came_from:
-                        path.append(to_world(current_grid, tile_size))
-                        current_grid = came_from[current_grid]
-                    path.reverse()
-                    return path
-
-                # Explore neighbors
-                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    neighbor = (current_grid[0] + dx, current_grid[1] + dy)
-                    if neighbor in obstacle_grids:
-                        continue
-
-                    tentative_g_score = g_score[current_grid] + 1
-                    if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
-                        came_from[neighbor] = current_grid
-                        g_score[neighbor] = tentative_g_score
-                        f_score[neighbor] = tentative_g_score + heuristic(
-                            neighbor, goal_grid
-                        )
-                        open_set.put((f_score[neighbor], neighbor))
-
-            return []  # No path found
-
-        if target and objects:
-            if (
-                to_grid(target, tile_size)
-                != to_grid(self.old_target_location, tile_size)
-                or not self.path
-            ):
-                self.old_target_location = target
-                # Pathfinding: Calculate path if necessary
-                self.path = astar_pathfinding(
-                    current, target, [obj.hitbox for obj in objects], tile_size
-                )
-            # Follow the calculated path
-            elif self.path:
-                next_waypoint = pygame.math.Vector2(self.path[0])
-                desired_direction = next_waypoint - current
-                distance = desired_direction.magnitude()
-
-                if distance < 3:  # Reached waypoint
-                    self.path.pop(0)
-                    if not self.path:  # Final waypoint reached\
-                        self.direction = pygame.math.Vector2(0, 0)
-                        return
-                else:
-                    desired_direction = desired_direction.normalize()
-                    self.direction = desired_direction
-
-        move_delta = self.direction * speed
-        # Smooth movement and apply speed
-        self.hitbox.x += move_delta.x
-        self.collision("horizontal")
-        self.hitbox.y += move_delta.y
-        self.collision("vertical")
-        self.rect.center = self.hitbox.center
-
-    def check_collision(self, test_rect):
-        for sprite in self.obstacle_sprites:
-            if test_rect.colliderect(sprite.hitbox):
-                return True
-        return False
-
-    def collision(self, direction):
-        if direction == "horizontal":
-            for sprite in self.obstacle_sprites:
-                if sprite.hitbox.colliderect(self.hitbox):
-                    if self.direction.x > 0:  # moving right
-                        self.hitbox.right = sprite.hitbox.left
-                    if self.direction.x < 0:  # moving left
-                        self.hitbox.left = sprite.hitbox.right
-
-        if direction == "vertical":
-            for sprite in self.obstacle_sprites:
-                if sprite.hitbox.colliderect(self.hitbox):
-                    if self.direction.y > 0:  # moving down
-                        self.hitbox.bottom = sprite.hitbox.top
-                    if self.direction.y < 0:  # moving up
-                        self.hitbox.top = sprite.hitbox.bottom
 
     def attack(self, target: "Entity"):
         # set event name
@@ -755,3 +592,201 @@ class Enemy(Entity):
             self.text_bubble.update_text(
                 f"{self.action} {self.target_name}: {self.reason}", self.rect
             )
+
+
+class Entity(pygame.sprite.Sprite):
+    def __init__(self, groups):
+        super().__init__(groups)
+        self.groups = groups
+        # init class
+        self.animation_player = AnimationPlayer()
+
+        # params
+        self.animation_speed = 0.15
+        self.frame_index = 0
+        self.animations = {}
+        self.sprite_type = None
+
+        # movement
+        self.direction = pygame.math.Vector2()
+        self.facing = pygame.math.Vector2()
+
+        # attack
+        self.first_attack = False
+        self.vulnerable = True
+        self.attack_type = None
+
+        # status
+        self.name = None  # expected to be set by subclass
+        self.full_name = None  # expected to be set by subclass
+        self.target_location = None
+        self.target_name = None
+
+        self.outside_event = None
+        self.reason = None
+
+        # stats
+        self.health = None
+        self.max_health = None
+        self.energy = None
+        self.max_energy = None
+        self.lvl = 1
+        self.attack_damage = 0
+        self.speed = 0
+        self.exp = 0
+
+        # sounds
+        self.death_sound = pygame.mixer.Sound("../audio/death.wav")
+        self.hit_sound = pygame.mixer.Sound("../audio/hit.wav")
+
+        self.death_sound.set_volume(0.6)
+        self.hit_sound.set_volume(0.6)
+
+        # cosmetic
+        self.text_bubble = None
+        self.status_bars = None
+
+        # others
+        self.animate_sequence = "idle"
+
+        # observation
+        self.can_save_observation = False
+        self.observation_count = 0
+
+        self.internal_event = None
+        self.old_internal_event = None
+        self.outside_event = None
+        self.old_outside_event = None
+        self.observed_event = None
+        self.old_observed_event = None
+
+        self.first_observation = False
+
+    def hitbox_collide(
+        self, sprite1: pygame.sprite.Sprite, sprite2: pygame.sprite.Sprite
+    ):
+        return sprite1.hitbox.colliderect(sprite2.hitbox)
+
+    def collision(self, direction):
+        if direction == "horizontal":
+            for sprite in self.obstacle_sprites:
+                if sprite.hitbox.colliderect(self.hitbox):
+                    if self.direction.x > 0:  # moving right
+                        self.hitbox.right = sprite.hitbox.left
+                    if self.direction.x < 0:  # moving left
+                        self.hitbox.left = sprite.hitbox.right
+
+        if direction == "vertical":
+            for sprite in self.obstacle_sprites:
+                if sprite.hitbox.colliderect(self.hitbox):
+                    if self.direction.y > 0:  # moving down
+                        self.hitbox.bottom = sprite.hitbox.top
+                    if self.direction.y < 0:  # moving up
+                        self.hitbox.top = sprite.hitbox.bottom
+
+    def animate(self):
+        animation = self.animations[self.animate_sequence]  # load animation sequence
+
+        self.frame_index += self.animation_speed
+        if self.frame_index >= len(animation):
+            self.frame_index = 0
+
+        # set the image
+        self.image = animation[int(self.frame_index)]
+
+    def import_graphics(self, main_path, name, animations):
+
+        main_path = f"{main_path}/{name}/"
+        # get all frames into animation index
+        for status in animations.keys():
+            surface_list = []
+            path = main_path + status
+            for _, _, img_files in walk(path):
+                for image in img_files:
+                    full_path = path + "/" + image
+                    image_surf = pygame.image.load(full_path).convert_alpha()
+                    surface_list.append(image_surf)
+
+            animations[status] = surface_list
+
+    def get_damage(self, attacker: "Entity"):
+
+        if self.vulnerable:
+            # save attacked event
+            self.outside_event = f"attacked by {attacker.full_name}"
+            self.vulnerable = False
+            self.hit_sound.play()
+            self.vulnerable_time = pygame.time.get_ticks()
+            # save observation
+
+            attack_type = attacker.attack_type
+            if attacker.sprite_type == "player":
+                attack_type = attacker.attack_type
+                if attack_type == "weapon":
+                    self.health -= attacker.get_full_weapon_damage()
+                elif attack_type == "magic":
+                    self.health -= attacker.get_full_magic_damage()
+
+            else:
+                self.health -= attacker.attack_damage
+
+            # knockback
+
+            # particles
+            pos = self.rect.center
+            if attack_type:
+                self.animation_player.create_particles(
+                    attack_type, pos, [self.groups[0]]
+                )
+
+            # knockback
+            _, direction = get_distance_direction(self, attacker)
+            # Set target location based on knockback direction
+            knockback_distance = 200  # pixels to push back
+            knockback_speed = 5
+            self.target_location = pygame.math.Vector2(self.hitbox.center) - (
+                direction * knockback_distance
+                if direction.magnitude() != 0
+                else pygame.math.Vector2()
+            )
+            self.move(self.target_location, knockback_speed)
+
+            if self.health <= 0:
+                # self.action = "dead"
+                self.outside_event = "dead, killed by " + attacker.full_name
+                attacker.outside_event = f"killed {self.full_name}"
+                # save dead event
+
+                self.animation_player.create_particles(
+                    self.name, self.rect.center, [self.groups[0]]
+                )
+
+                self.death_sound.play()
+                self.add_exp(attacker, self.exp)
+
+                # if self.status_bars:
+                #     self.status_bars.kill()
+                # if self.text_bubble:
+                #     self.text_bubble.kill()
+
+            # self.can_save_observation = True
+
+    def get_heal(self, healer: "Entity"):
+        self.health += healer.attack_damage
+        if self.health >= self.max_health:
+            self.outside_event = f"fully healed by {healer.full_name}"
+            healer.outside_event = f"healed {self.full_name}"
+            self.health = self.max_health
+
+        self.animation_player.create_particles(
+            "heal", self.hitbox.center, [self.groups[0]]
+        )
+
+        self.outside_event = f"healed by {healer.full_name}"
+        # self.can_save_observation = True
+
+    def add_exp(self, entity: "Entity", amount):
+        entity.exp += amount
+
+    def respawn(self):
+        pass

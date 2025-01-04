@@ -6,7 +6,6 @@ TILESIZE = 64
 
 # model
 MODEL_PATH = "../model/Llama-3.2-1B-Instruct.Q4_K_M.gguf"
-# MODEL_PATH = "../model/Vikhr-Qwen-2.5-0.5B-instruct-Q4_K_M.gguf"
 INFERENCE_MODE = "local"
 CONTEXT_LENGTH = 8192
 CHAT_INTERVAL = 24000
@@ -144,34 +143,3 @@ monster_data = {
         "characteristic": "enemy of player",
     },
 }
-
-
-prompt_template = """
-            
-            
-            Guidelines:
-                
-            "action": Choose one from ("attack", "runaway", "heal", "mine"). "attack": Attack a target entity. "runaway": Run away from a target entity. "heal": Heal a target entity which costs energy. "mine": Mine a target resource. 
-            "target_name": Specify target name (entity_name or object_name) from your 'Observation' or "None" if there’s no target.
-            "vigilant": A score from 0 to 100 indicating your current vigilant level.
-            "reason": A 5 words reason.
-            
-            
-            Context:
-
-            You are {full_name}, and you are {characteristic}.
-            Priority to survive using all actions available.
-
-            'Observation': {observation}
-            'Memory': {summary}
-            
-            Using above ontext that contains your current 'Observation' about the world and your 'Memory' (which can be None) to plan your next step. Respond in single JSON with the format of"Next step":{{"action": string,"target_name": string,"vigilant": int,"reason": string}}
-            
-            'Next step':
-            """
-
-summary_template = """
-            Use records from 'memory_stream' to summarize your progress in short paragraph less than {threshold} words. "last_summary" provide context for your last progress.
-            "memory_stream": {memory_stream}
-            "last_summary": {summary}
-            Your current situation: """
