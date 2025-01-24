@@ -54,15 +54,6 @@ class Pathfinder:
 
         return entities_in_range
 
-    def to_grid(pos, tile_size):
-        return (int(pos.x // tile_size), int(pos.y // tile_size))
-
-    def to_world(grid, tile_size):
-        return pygame.math.Vector2(
-            grid[0] * tile_size + tile_size / 2,
-            grid[1] * tile_size + tile_size / 2,
-        )
-
     def astar_pathfinding(self, start, goal, obstacles, tile_size):
 
         def find_nearest_walkable(grid, obstacle_grids):
@@ -157,7 +148,7 @@ class Pathfinder:
             return location
         return None
 
-    def get_adjacent_entities(self, location: Location) -> List[str]:
+    def get_adjacent_entities(self, location: Location, env: "Environment") -> List[str]:
         x, y = location
         adjacent_entities = []
 
@@ -171,8 +162,8 @@ class Pathfinder:
                 new_y = y + dy
 
                 # Check if within bounds
-                if 0 <= new_x < self.config.size and 0 <= new_y < self.config.size:
-                    entity_id = self.grid[new_y][new_x]
+                if 0 <= new_x < env.config.size and 0 <= new_y < env.config.size:
+                    entity_id = env.grid[new_y][new_x]
                     if entity_id != "-1":
                         adjacent_entities.append(entity_id)
 
@@ -249,7 +240,8 @@ class Pathfinder:
         # Initialize the open set and closed set
         open_set = PriorityQueue()
         open_set.put((0, start))
-        came_from = {}
+        # came_from = {}
+        path = []
         g_score = {start: 0}
         # calculate h score for all nodes
         h_score = {}
@@ -257,7 +249,6 @@ class Pathfinder:
         while not open_set.empty():
 
             _, current = open_set.get()
-            path = []
             path.append(current)
 
             if self.is_adjacent(current, goal):
@@ -273,4 +264,21 @@ class Pathfinder:
                     f_score = g_score[adjacent] + h_score
                     open_set.put((f_score, adjacent))
 
-        return came_from
+        return path
+
+    def move_to_target(
+        self, c: "Creature", entity: Union["Creature", "Resource"], env: "Environment"
+    ) -> bool:
+
+        start = c.location
+        goal = entity.location
+        path = self.pathfinder(start, goal, env)
+        end = path[-1]
+        # move to the max range limit by move speed for each step
+        if len(path) > c.stats.move_speed:
+            end = path[c.stats.move_speed]
+
+        self.relocate(c, end, env)
+
+    # move env
+    # move sprite

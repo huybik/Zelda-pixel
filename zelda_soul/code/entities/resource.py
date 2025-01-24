@@ -4,7 +4,11 @@ from typing import Tuple, Dict
 
 @dataclass
 class ResourceStat:
-    amount: int
+    hp: int
+
+
+class ResourceStatus:
+    deleted: bool = False  # resource depleted
 
 
 class Resource:
@@ -14,16 +18,17 @@ class Resource:
         id: str,
         location: Tuple[int, int],
         type: str,
-        amount: int = 100,
+        hp: int = 100,
     ) -> None:
         self.id = id
         self.type = type
         self.location = location
-        self.stats = ResourceStat(amount=amount)
+        self.stats = ResourceStat(hp=hp)
+        self.status = ResourceStatus()
 
-    def reduce(self, amount: int) -> bool:
+    def reduce(self, hp: int) -> bool:
 
-        if self.stats.amount > 0:
-            self.stats.amount = max(self.stats.amount - amount, 0)
+        if self.stats.hp > 0:
+            self.stats.hp = max(self.stats.hp - hp, 0)
             return True
         return False

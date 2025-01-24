@@ -1,11 +1,12 @@
 # game setup
 WIDTH = 1280
 HEIGTH = 720
-FPS = 60
+FPS = 64
 TILESIZE = 64
+MAX_STEP_COUNT = 500
 
 # model
-MODEL_PATH = "../model/Llama-3.2-1B-Instruct.Q4_K_M.gguf"
+MODEL_PATH = "model/Llama-3.2-1B-Instruct.Q4_K_M.gguf"
 INFERENCE_MODE = "local"
 CONTEXT_LENGTH = 8192
 CHAT_INTERVAL = 24000
@@ -22,10 +23,16 @@ BAR_HEIGHT = 20
 HEALTH_BAR_WIDTH = 150
 ENERGY_BAR_WIDTH = 140
 ITEM_BOX_SIZE = 80
-UI_FONT = "../graphics/font/joystix.ttf"
+UI_FONT = "graphics/font/joystix.ttf"
 UI_FONT_SIZE = 18
 
-HITBOX_OFFSET = {"player": -26, "object": -40, "grass": -10, "boundary": 0}
+HITBOX_OFFSET = {
+    "player": -26,
+    "object": -40,
+    "grass": -10,
+    "boundary": 0,
+    "resource": -10,
+}
 
 # general colors
 WATER_COLOR = "#71ddee"
@@ -49,28 +56,28 @@ weapon_data = {
     "sword": {
         "cooldown": 100,
         "damage": 15,
-        "graphic": "../graphics/weapons/sword/full.png",
+        "graphic": "graphics/weapons/sword/full.png",
         # "knockback": 10,
     },
     "lance": {
         "cooldown": 400,
         "damage": 30,
-        "graphic": "../graphics/weapons/lance/full.png",
+        "graphic": "graphics/weapons/lance/full.png",
     },
     "axe": {
         "cooldown": 300,
         "damage": 20,
-        "graphic": "../graphics/weapons/axe/full.png",
+        "graphic": "graphics/weapons/axe/full.png",
     },
     "rapier": {
         "cooldown": 50,
         "damage": 8,
-        "graphic": "../graphics/weapons/rapier/full.png",
+        "graphic": "graphics/weapons/rapier/full.png",
     },
     "sai": {
         "cooldown": 80,
         "damage": 10,
-        "graphic": "../graphics/weapons/sai/full.png",
+        "graphic": "graphics/weapons/sai/full.png",
     },
 }
 
@@ -79,12 +86,12 @@ magic_data = {
     "flame": {
         "strength": 5,
         "cost": 20,
-        "graphic": "../graphics/particles/flame/fire.png",
+        "graphic": "graphics/particles/flame/fire.png",
     },
     "heal": {
         "strength": 20,
         "cost": 10,
-        "graphic": "../graphics/particles/heal/heal.png",
+        "graphic": "graphics/particles/heal/heal.png",
     },
 }
 
@@ -96,7 +103,7 @@ monster_data = {
         "exp": 100,
         "damage": 20,
         "attack_type": "slash",
-        "attack_sound": "../audio/attack/slash.wav",
+        "attack_sound": "audio/attack/slash.wav",
         "speed": 2,
         "resistance": 3,
         "act_radius": 120,
@@ -109,7 +116,7 @@ monster_data = {
         "exp": 250,
         "damage": 40,
         "attack_type": "claw",
-        "attack_sound": "../audio/attack/claw.wav",
+        "attack_sound": "audio/attack/claw.wav",
         "speed": 3,
         "resistance": 3,
         "act_radius": 120,
@@ -122,7 +129,7 @@ monster_data = {
         "exp": 110,
         "damage": 8,
         "attack_type": "thunder",
-        "attack_sound": "../audio/attack/fireball.wav",
+        "attack_sound": "audio/attack/fireball.wav",
         "speed": 2,
         "resistance": 3,
         "act_radius": 200,
@@ -135,7 +142,7 @@ monster_data = {
         "exp": 120,
         "damage": 6,
         "attack_type": "leaf_attack",
-        "attack_sound": "../audio/attack/slash.wav",
+        "attack_sound": "audio/attack/slash.wav",
         "speed": 2,
         "resistance": 3,
         "act_radius": 120,

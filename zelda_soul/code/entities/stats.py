@@ -49,6 +49,7 @@ class Status:
     move: int = 0  # how many times move
     harvest: int = 0  # how many times harvest
     chill: int = 0  # how many times chill
+    deleted: bool = False  # is creature dead
 
 
 GENOME_KEYS = [
@@ -87,8 +88,11 @@ class CreatureStat:
     def _calculate_stats(self, genome: Genome) -> Stats:
         """Calculate creature stats from genome sums."""
         genome_sums = {key: sum(genome[key]) + 1 for key in GENOME_KEYS}
-        genome_sums["hp"] = 1
-        genome_sums["energy"] = 1
+        genome_sums["hp"] = 10
+        genome_sums["energy"] = 10
+        genome_sums["max_hp"] += 10
+        genome_sums["max_energy"] += 10
+        
         stats = Stats(**genome_sums)
 
         return stats

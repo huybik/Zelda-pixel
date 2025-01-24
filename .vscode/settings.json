@@ -1,5 +1,5 @@
 {
     "python.analysis.extraPaths": [
-        "./zelda_soul/code"
+        "./zelda_soul/code",
     ]
 }

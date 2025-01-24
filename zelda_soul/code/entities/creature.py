@@ -20,8 +20,6 @@ class Creature:
         self.stats: Stats = stats.get_stats()
         self.status: Status = stats.get_status()
 
-        self.actions = Action()
-        self.action_keys = self.actions.get_actions()
 
 
 if __name__ == "__main__":

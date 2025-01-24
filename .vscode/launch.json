@@ -8,10 +8,11 @@
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
-            // "cwd": "/Users/huy/MEGAsync/Projects/_study/game_design/zelda-soul/code",
+            // "cwd": "zelda-soul",
             // "program": "${file}",
-            "program": "zelda_soul/code/test.py",
+            "program": "code/test.py",
             "console": "integratedTerminal",
+            "cwd": "zelda_soul",
             // "cwd": "${fileDirname}",
         }
     ]
