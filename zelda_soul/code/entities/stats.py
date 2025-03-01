@@ -88,11 +88,12 @@ class CreatureStat:
     def _calculate_stats(self, genome: Genome) -> Stats:
         """Calculate creature stats from genome sums."""
         genome_sums = {key: sum(genome[key]) + 1 for key in GENOME_KEYS}
-        genome_sums["hp"] = 10
-        genome_sums["energy"] = 10
-        genome_sums["max_hp"] += 10
-        genome_sums["max_energy"] += 10
-        
+        init_stat_point = 20
+        genome_sums["hp"] = init_stat_point
+        genome_sums["energy"] = init_stat_point
+        genome_sums["max_hp"] += init_stat_point
+        genome_sums["max_energy"] += init_stat_point
+
         stats = Stats(**genome_sums)
 
         return stats

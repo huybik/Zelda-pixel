@@ -4,7 +4,10 @@ from ai.simple_ai import SimpleAI
 import random
 import numpy as np
 from entities.actions import Action
-from ai.ppo_sonet import train, run
+from stable_baselines3 import PPO
+
+# from ai.ppo_sonet import train, run
+from ai.ppo_stablebaseline import train, run
 
 
 import asyncio
@@ -68,13 +71,13 @@ async def main():
 
 
 if __name__ == "__main__":
+
     seed_everything()
 
     load_dotenv()
     # asyncio.run(main())
 
-    config = EnvironmentConfig(size=5, n_creature=2, n_resource=2, resource_hp=100)
-    env = Environment(config)
+    env = Environment()
     pathfinder = Pathfinder()
 
     env.populate()
@@ -88,7 +91,7 @@ if __name__ == "__main__":
     c2 = env.get_entity("c2")
     r2 = env.get_entity("r2")
     r1 = env.get_entity("r1")
-    
+
     action = ai.chose_action(c, env)
     ai.execute_action(c, action, env)
     env.render()
@@ -123,24 +126,27 @@ if __name__ == "__main__":
     path = pathfinder.a_star_path_finder(c.location, c2.location, env)
     print(path)
 
-    
-    
     env.set_current_player("c1")
     state, reward, terminated, truncated, _ = env.step(0)
     env.render()
-    
+
     # attack step
     print(f"hp: {c3.stats.hp}")
     state, reward, terminated, truncated, _ = env.step(4)
     print(f"hp: {c3.stats.hp}")
-    
-    
-    print(f"hp: {r2.stats.hp}")
-    state, reward, terminated, truncated, _ = env.step(6)
-    print(f"hp: {r2.stats.hp}")
-    
+
+    # print(f"hp: {r2.stats.hp}")
+    # state, reward, terminated, truncated, _ = env.step(6)
+    # print(f"hp: {r2.stats.hp}")
+
     state, _ = env.reset()
     print(state)
-    
-    
-    agent = train()
+
+    # try:
+    #     model = PPO.load("ppo_best_model")
+    # except Exception as e:
+    #     print(f"{e}, training new model")
+    #     model = None
+    model = None
+    model = train(model, total_timesteps=700000)
+    run(model)

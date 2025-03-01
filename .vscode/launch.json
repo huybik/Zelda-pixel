@@ -10,9 +10,9 @@
             "request": "launch",
             // "cwd": "zelda-soul",
             // "program": "${file}",
-            "program": "code/test.py",
+            "program": "zelda_soul/code/test.py",
             "console": "integratedTerminal",
-            "cwd": "zelda_soul",
+            // "cwd": "zelda_soul",
             // "cwd": "${fileDirname}",
         }
     ]

@@ -3,7 +3,7 @@ WIDTH = 1280
 HEIGTH = 720
 FPS = 64
 TILESIZE = 64
-MAX_STEP_COUNT = 500
+MAX_STEP_COUNT = 100
 
 # model
 MODEL_PATH = "model/Llama-3.2-1B-Instruct.Q4_K_M.gguf"
