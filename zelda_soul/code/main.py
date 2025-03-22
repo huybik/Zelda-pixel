@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 import pygame
 
-from level import Level
+from game.level import Level
 from settings import WIDTH, HEIGTH, FPS, WATER_COLOR
-from debug import debug
+from game.debug import debug
 from dotenv import load_dotenv
 
 

@@ -75,78 +75,78 @@ if __name__ == "__main__":
     seed_everything()
 
     load_dotenv()
-    # asyncio.run(main())
+    asyncio.run(main())
 
-    env = Environment()
-    pathfinder = Pathfinder()
+    # env = Environment()
+    # pathfinder = Pathfinder()
 
-    env.populate()
-    env.render()
-    print(env.get_entity("c1").stats)
-    print()
+    # env.populate()
+    # env.render()
+    # print(env.get_entity("c1").stats)
+    # print()
 
-    ai = SimpleAI()
-    a = Action()
-    c = env.get_entity("c1")
-    c2 = env.get_entity("c2")
-    r2 = env.get_entity("r2")
-    r1 = env.get_entity("r1")
+    # ai = SimpleAI()
+    # a = Action()
+    # c = env.get_entity("c1")
+    # c2 = env.get_entity("c2")
+    # r2 = env.get_entity("r2")
+    # r1 = env.get_entity("r1")
 
-    action = ai.chose_action(c, env)
-    ai.execute_action(c, action, env)
-    env.render()
+    # action = ai.chose_action(c, env)
+    # ai.execute_action(c, action, env)
+    # env.render()
 
-    c2 = env.get_entity("c2")
-    print(f"hp: {c2.stats.hp}")
-    print(f"attack: {a.attack(c, c2)}")
-    print(f"hp: {c2.stats.hp}")
+    # c2 = env.get_entity("c2")
+    # print(f"hp: {c2.stats.hp}")
+    # print(f"attack: {a.attack(c, c2)}")
+    # print(f"hp: {c2.stats.hp}")
 
-    print(f"heal result: {a.heal(c, c2)}")
-    print(f"hp: {c2.stats.hp}")
+    # print(f"heal result: {a.heal(c, c2)}")
+    # print(f"hp: {c2.stats.hp}")
 
-    c.stats.energy = 20
-    c3 = a.reproduce(c, c2, env)
-    print(f"reproduce result: {c3.stats}")
+    # c.stats.energy = 20
+    # c3 = a.reproduce(c, c2, env)
+    # print(f"reproduce result: {c3.stats}")
 
-    c.stats.energy = 1
-    target = env.get_entity("r1")
-    print(f"hp: {c.stats.hp}")
-    print(f"hp: {target.stats.hp}")
-    print(f"harvest result: {a.harvest(c, target)}")
-    print(f"hp: {c.stats.hp}")
-    print(f"hp: {target.stats.hp}")
+    # c.stats.energy = 1
+    # target = env.get_entity("r1")
+    # print(f"hp: {c.stats.hp}")
+    # print(f"hp: {target.stats.hp}")
+    # print(f"harvest result: {a.harvest(c, target)}")
+    # print(f"hp: {c.stats.hp}")
+    # print(f"hp: {target.stats.hp}")
 
-    print(f"energy: {c.stats.energy}")
-    print(f"chill: {a.chill(c)}")
-    print(f"energy: {c.stats.energy}")
+    # print(f"energy: {c.stats.energy}")
+    # print(f"chill: {a.chill(c)}")
+    # print(f"energy: {c.stats.energy}")
 
-    # test a star path finding
-    env.render()
-    c.stats.move_speed = 10
-    path = pathfinder.a_star_path_finder(c.location, c2.location, env)
-    print(path)
+    # # test a star path finding
+    # env.render()
+    # c.stats.move_speed = 10
+    # path = pathfinder.a_star_path_finder(c.location, c2.location, env)
+    # print(path)
 
-    env.set_current_player("c1")
-    state, reward, terminated, truncated, _ = env.step(0)
-    env.render()
+    # env.set_current_player("c1")
+    # state, reward, terminated, truncated, _ = env.step(0)
+    # env.render()
 
-    # attack step
-    print(f"hp: {c3.stats.hp}")
-    state, reward, terminated, truncated, _ = env.step(4)
-    print(f"hp: {c3.stats.hp}")
+    # # attack step
+    # print(f"hp: {c3.stats.hp}")
+    # state, reward, terminated, truncated, _ = env.step(4)
+    # print(f"hp: {c3.stats.hp}")
 
-    # print(f"hp: {r2.stats.hp}")
-    # state, reward, terminated, truncated, _ = env.step(6)
-    # print(f"hp: {r2.stats.hp}")
+    # # print(f"hp: {r2.stats.hp}")
+    # # state, reward, terminated, truncated, _ = env.step(6)
+    # # print(f"hp: {r2.stats.hp}")
 
-    state, _ = env.reset()
-    print(state)
+    # state, _ = env.reset()
+    # print(state)
 
-    # try:
-    #     model = PPO.load("ppo_best_model")
-    # except Exception as e:
-    #     print(f"{e}, training new model")
-    #     model = None
-    model = None
-    model = train(model, total_timesteps=700000)
-    run(model)
+    # # try:
+    # #     model = PPO.load("ppo_best_model")
+    # # except Exception as e:
+    # #     print(f"{e}, training new model")
+    # #     model = None
+    # model = None
+    # model = train(model, total_timesteps=700000)
+    # run(model)

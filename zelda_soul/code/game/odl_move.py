@@ -41,10 +41,10 @@ def move(
         self.collision("vertical")
         self.rect.center = self.hitbox.center
 
-    def check_collision(self, test_rect):
-        for sprite in self.obstacle_sprites:
-            if test_rect.colliderect(sprite.hitbox):
-                return True
-        return False
+def check_collision(self, test_rect):
+    for sprite in self.obstacle_sprites:
+        if test_rect.colliderect(sprite.hitbox):
+            return True
+    return False
 
     
