@@ -324,7 +324,19 @@ class Enemy(Entity):
         if decision:
             self.target_name = decision.get("target_name")
             self.vigilant = int(decision.get("vigilant", 0))
-            self.action = decision.get("action", "idle")
+            
+            # Get the action proposed by the AI
+            proposed_action = decision.get("action", "idle")
+
+            # Validate that the action has a corresponding animation
+            if proposed_action in self.animations:
+                self.action = proposed_action
+            else:
+                # If the action is invalid (e.g., "analyze"), default to "idle"
+                # You can add a print statement to help with debugging in the future
+                print(f"Warning: Invalid action '{proposed_action}' for {self.full_name}. Defaulting to 'idle'.")
+                self.action = "idle"
+                
             self.reason = decision.get("reason", "")
             if self.target_name == "None":
                 self.target_name = None
