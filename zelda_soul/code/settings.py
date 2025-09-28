@@ -149,30 +149,38 @@ monster_data = {
 }
 
 
-prompt_template = """
+prompt_template = """You are {full_name}, a game character.
+Your personality trait is: {characteristic}.
+Your primary goal is to act according to your trait. Your secondary goal is survival.
 
-            Guidelines:
-            "action": Choose one (attack, runaway, heal, mine). "heal" heals someone else (not self). "mine" only valid if resource target available.
-            "target_name": Must be a name from Observation Targets or "None".
-            "vigilant": Integer 0-100.
-            "reason": <=5 words, no punctuation except spaces.
+LAST KNOWN INFORMATION:
+- Recent Events (Observations): {observation}
+- Long-term Memory (Summary): {summary}
+- Potential Targets:
+  - Entities: {target_entities}
+  - Resources: {target_resources}
 
-            Context:
-            You are {full_name} and you are {characteristic}. Survive first.
-            Observation: {observation}
-            Memory: {summary}
+AVAILABLE ACTIONS:
+- "attack": Engage an entity.
+- "heal": Help a friendly entity (not yourself).
+- "mine": Gather from a resource.
+- "runaway": Flee from a threat.
+- "idle": Wait and observe.
 
-            OUTPUT RULES:
-            Return ONLY one single-line MINIFIED JSON object (no code fences, no prefix, no explanation):
-            {{"action":"attack","target_name":"player","vigilant":50,"reason":"short reason"}}
-            Do not wrap inside another object or add labels.
-            If unsure choose safest action runaway with target_name "None".
+TASK:
+1. Analyze the situation.
+2. Decide on the best action based on your trait and goals.
+3. Choose a target from the list or "None".
+4. Set a vigilance level (0-100) based on perceived threat.
+5. Provide a brief, in-character reason (under 5 words).
 
-            JSON ONLY:
-            """
+OUTPUT FORMAT:
+Return ONLY a single-line, minified JSON object. Do not include markdown, comments, or any other text.
+Example format: {{"action":"...","target_name":"...","vigilant":...,"reason":"..."}}
+"""
 
 summary_template = """
-            Use records from 'memory_stream' to summarize your progress in short paragraph less than {threshold} words. "last_summary" provide context for your last progress.
-            "memory_stream": {memory_stream}
-            "last_summary": {summary}
-            Your current situation: """
+                 Use records from 'memory_stream' to summarize your progress in short paragraph less than {threshold} words. "last_summary" provide context for your last progress.
+                 "memory_stream": {memory_stream}
+                 "last_summary": {summary}
+                 Your current situation: """
