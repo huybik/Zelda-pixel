@@ -1,5 +1,8 @@
 import pygame
-import asyncio
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ai_manager import AIManager
 
 
 class YSortCameraGroup(pygame.sprite.Group):
@@ -30,8 +33,6 @@ class YSortCameraGroup(pygame.sprite.Group):
         # self.sprites are all sprite in current sprite group
         for sprite in sorted(self.sprites(), key=lambda sprite: sprite.rect.y):
             offset_pos = sprite.rect.topleft - self.offset
-            # offset_pos = sprite.rect.topleft
-
             self.display_surface.blit(sprite.image, offset_pos)
 
     def enemy_update(self, player, entities, objects):
@@ -41,18 +42,6 @@ class YSortCameraGroup(pygame.sprite.Group):
             if hasattr(sprite, "sprite_type") and sprite.sprite_type == "enemy"
         ]
 
-        # Run regular updates
+        # Run regular updates for all enemies
         for enemy in enemy_sprites:
             enemy.enemy_update(player, entities, objects)
-
-        # Run AI decisions concurrently with timeout
-        # Create tasks for all enemies
-        
-        # await asyncio.gather(
-        #     *(
-        #         enemy.enemy_decision(player, entities, objects)
-        #         for enemy in enemy_sprites
-        #     )
-        # )
-        
-        

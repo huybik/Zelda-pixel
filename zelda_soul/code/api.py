@@ -68,7 +68,7 @@ class LocalAPI:
 
     # ------------------ Prompt Utilities ------------------ #
     def _build_messages(self, user_input: str, system_prompt: Optional[str] = None,
-                         extra: Optional[List[Dict[str, str]]] = None) -> List[Dict[str, str]]:
+                          extra: Optional[List[Dict[str, str]]] = None) -> List[Dict[str, str]]:
         system_prompt = system_prompt or SYSTEM_PROMPT
         messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
         if extra:
@@ -96,12 +96,14 @@ class LocalAPI:
             return observations_json  # fallback silently
 
     async def get_response(self, user_input: str, system_prompt: Optional[str] = None,
-                           extra_messages: Optional[List[Dict[str, str]]] = None) -> str:
+                             extra_messages: Optional[List[Dict[str, str]]] = None) -> str:
         messages = self._build_messages(user_input, system_prompt, extra_messages)
         try:
             loop = asyncio.get_event_loop()
             started = time.time()
             prompt = self._messages_to_prompt(messages)
+            
+            # The blocking generate function is run in an executor to not block the event loop
             raw_text = await loop.run_in_executor(
                 None,
                 lambda: generate(
@@ -127,6 +129,8 @@ class OpenaiAPI:
         self.client = self.load_api_key()
 
     async def get_response(self, user_input, system_prompt=None):
+        if not self.client:
+             return "ERROR: OpenAI client not initialized."
         if not system_prompt:
             system_prompt = self.system_prompt
 
@@ -144,7 +148,6 @@ class OpenaiAPI:
                 ),
             )
             ai_response = response.choices[0].message.content
-
             return ai_response
 
         except Exception as e:
@@ -165,42 +168,3 @@ class OpenaiAPI:
         except Exception as e:
             print(f"Error loading API key: {e}")
             return None
-
-
-# class GeminiAPI:
-#     def __init__(self, *args, **kwargs):
-#         self.system_prompt = """You are an smart being that like to plan your action"""
-
-#         self.model = "gemini-2.0-flash"  # Using Gemini model
-
-
-#         # Configure the API key
-#         genai.configure(api_key="YOUR_API_KEY")
-
-#         # Use the chat method to interact with the model
-
-#     async def get_response(self, user_input, system_prompt=None):
-#         if not system_prompt:
-#             system_prompt = self.system_prompt
-
-#         messages=[
-#         {'role': 'system', 'content': system_prompt},
-#         {'role': 'user', 'content': user_input}
-#         ]
-
-#         try:
-#             loop = asyncio.get_event_loop()
-#             response = await loop.run_in_executor(
-#                 None,  # None uses the default executor
-#                 lambda: genai.chat(
-#                 model=self.model,  # Specify the chat model
-#                 messages=messages
-#                 ),
-#             )
-#             response = response['candidates'][0]['content']
-
-#             return response
-
-#         except Exception as e:
-#             print(f"Error getting response: {e}")
-#             return "I'm having trouble connecting right now."

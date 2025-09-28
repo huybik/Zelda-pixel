@@ -1,16 +1,14 @@
 from __future__ import annotations
-
-import asyncio
 import pygame
-
 from level import Level
-from settings import WIDTH, HEIGTH, FPS, WATER_COLOR
+from settings import WIDTH, HEIGTH
 from debug import debug
 from dotenv import load_dotenv
 import os
 import sys
 from pathlib import Path
-# make the project root (parent of this file's directory) the current working directory
+
+# Set working directory to the script's root
 ROOT = Path(__file__).resolve().parent
 os.chdir(ROOT)
 sys.path.insert(0, str(ROOT))
@@ -19,16 +17,17 @@ class Game:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGTH))
-        pygame.display.set_caption("Zelda")
+        pygame.display.set_caption("Zelda Soul")
         self.clock = pygame.time.Clock()
         self.level = Level()
 
-        # sound
+        # Sound
         main_sound = pygame.mixer.Sound("../audio/main.ogg")
         main_sound.set_volume(0.5)
         main_sound.play(loops=-1)
 
-    async def run(self):
+    def run(self):
+        """Main synchronous game loop."""
         running = True
         while running:
             for event in pygame.event.get():
@@ -38,21 +37,24 @@ class Game:
                     if event.key == pygame.K_m:
                         self.level.toggle_menu()
 
-            self.screen.fill(WATER_COLOR)
-            await self.level.run()
+            self.screen.fill("#71ddee")  # WATER_COLOR
+            self.level.run()
+            
             fps = self.clock.get_fps()
             debug(f"FPS: {fps:.2f}")
 
             pygame.display.update()
             self.clock.tick(60)
-            # await asyncio.sleep(0.001)
+        
+        # Shutdown gracefully
+        self.level.shutdown()
+        pygame.quit()
+        sys.exit()
 
-
-async def main():
+def main():
     game = Game()
-    await game.run()
-
+    game.run()
 
 if __name__ == "__main__":
     load_dotenv()
-    asyncio.run(main())
+    main()
