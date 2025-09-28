@@ -1,5 +1,6 @@
 import pygame
-from support import import_folder
+from .support import import_folder
+from .settings import GRAPHICS_DIR
 import random
 
 
@@ -7,37 +8,37 @@ class AnimationPlayer:
     def __init__(self):
         self.frames = {
             # magic
-            "flame": import_folder("../graphics/particles/flame/frames"),
-            "aura": import_folder("../graphics/particles/aura"),
-            "heal": import_folder("../graphics/particles/heal/frames"),
+            "flame": import_folder(GRAPHICS_DIR / "particles" / "flame" / "frames"),
+            "aura": import_folder(GRAPHICS_DIR / "particles" / "aura"),
+            "heal": import_folder(GRAPHICS_DIR / "particles" / "heal" / "frames"),
             # attacks
-            "claw": import_folder("../graphics/particles/claw"),
-            "slash": import_folder("../graphics/particles/slash"),
-            "sparkle": import_folder("../graphics/particles/sparkle"),
-            "leaf_attack": import_folder("../graphics/particles/leaf_attack"),
-            "thunder": import_folder("../graphics/particles/thunder"),
+            "claw": import_folder(GRAPHICS_DIR / "particles" / "claw"),
+            "slash": import_folder(GRAPHICS_DIR / "particles" / "slash"),
+            "sparkle": import_folder(GRAPHICS_DIR / "particles" / "sparkle"),
+            "leaf_attack": import_folder(GRAPHICS_DIR / "particles" / "leaf_attack"),
+            "thunder": import_folder(GRAPHICS_DIR / "particles" / "thunder"),
             # monster deaths
-            "squid": import_folder("../graphics/particles/smoke_orange"),
-            "raccoon": import_folder("../graphics/particles/raccoon"),
-            "spirit": import_folder("../graphics/particles/nova"),
-            "bamboo": import_folder("../graphics/particles/bamboo"),
-            "player": import_folder("../graphics/particles/smoke2"),
-            "weapon": import_folder("../graphics/particles/sparkle"),
-            "magic": import_folder("../graphics/particles/sparkle"),
+            "squid": import_folder(GRAPHICS_DIR / "particles" / "smoke_orange"),
+            "raccoon": import_folder(GRAPHICS_DIR / "particles" / "raccoon"),
+            "spirit": import_folder(GRAPHICS_DIR / "particles" / "nova"),
+            "bamboo": import_folder(GRAPHICS_DIR / "particles" / "bamboo"),
+            "player": import_folder(GRAPHICS_DIR / "particles" / "smoke2"),
+            "weapon": import_folder(GRAPHICS_DIR / "particles" / "sparkle"),
+            "magic": import_folder(GRAPHICS_DIR / "particles" / "sparkle"),
             # leafs
             "leaf": (
-                import_folder("../graphics/particles/leaf1"),
-                import_folder("../graphics/particles/leaf2"),
-                import_folder("../graphics/particles/leaf3"),
-                import_folder("../graphics/particles/leaf4"),
-                import_folder("../graphics/particles/leaf5"),
-                import_folder("../graphics/particles/leaf6"),
-                self.reflect_images(import_folder("../graphics/particles/leaf1")),
-                self.reflect_images(import_folder("../graphics/particles/leaf2")),
-                self.reflect_images(import_folder("../graphics/particles/leaf3")),
-                self.reflect_images(import_folder("../graphics/particles/leaf4")),
-                self.reflect_images(import_folder("../graphics/particles/leaf5")),
-                self.reflect_images(import_folder("../graphics/particles/leaf6")),
+                import_folder(GRAPHICS_DIR / "particles" / "leaf1"),
+                import_folder(GRAPHICS_DIR / "particles" / "leaf2"),
+                import_folder(GRAPHICS_DIR / "particles" / "leaf3"),
+                import_folder(GRAPHICS_DIR / "particles" / "leaf4"),
+                import_folder(GRAPHICS_DIR / "particles" / "leaf5"),
+                import_folder(GRAPHICS_DIR / "particles" / "leaf6"),
+                self.reflect_images(import_folder(GRAPHICS_DIR / "particles" / "leaf1")),
+                self.reflect_images(import_folder(GRAPHICS_DIR / "particles" / "leaf2")),
+                self.reflect_images(import_folder(GRAPHICS_DIR / "particles" / "leaf3")),
+                self.reflect_images(import_folder(GRAPHICS_DIR / "particles" / "leaf4")),
+                self.reflect_images(import_folder(GRAPHICS_DIR / "particles" / "leaf5")),
+                self.reflect_images(import_folder(GRAPHICS_DIR / "particles" / "leaf6")),
             ),
         }
 

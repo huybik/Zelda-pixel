@@ -1,6 +1,6 @@
 import pygame
-from player import Player
-from settings import *
+from .player import Player
+from .settings import *
 
 
 class UI:

@@ -1,8 +1,10 @@
 import pygame
 from typing import TYPE_CHECKING
 
+from .settings import GRAPHICS_DIR
+
 if TYPE_CHECKING:
-    from ai_manager import AIManager
+    from .ai_manager import AIManager
 
 
 class YSortCameraGroup(pygame.sprite.Group):
@@ -17,7 +19,7 @@ class YSortCameraGroup(pygame.sprite.Group):
         self.offset = pygame.math.Vector2()
 
         # creating the floor, must load first before other things
-        self.floor_surf = pygame.image.load("../graphics/tilemap/ground.png").convert()
+        self.floor_surf = pygame.image.load(str(GRAPHICS_DIR / "tilemap" / "ground.png")).convert()
         self.floor_rect = self.floor_surf.get_rect(topleft=(0, 0))
 
     def custom_draw(self, player: pygame.sprite.Sprite):

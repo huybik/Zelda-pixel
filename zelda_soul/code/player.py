@@ -1,10 +1,9 @@
 import pygame
-from debug import debug
-from support import import_folder
-from settings import weapon_data, magic_data
-from entity import Entity
-from settings import HITBOX_OFFSET
-from support import wave_value
+from .debug import debug
+from .settings import AUDIO_DIR, GRAPHICS_DIR, HITBOX_OFFSET, magic_data, weapon_data
+from .entity import Entity
+from .support import wave_value
+from .resources import load_sound
 
 # from enemy import Enemy
 
@@ -21,7 +20,7 @@ class Player(Entity):
         create_magic,
     ):
         super().__init__(groups)
-        self.image = pygame.image.load("../graphics/test/player.png").convert_alpha()
+        self.image = pygame.image.load(str(GRAPHICS_DIR / "test" / "player.png")).convert_alpha()
         self.rect = self.image.get_rect(topleft=pos)
         self.name = "player"
         self.full_name = "player"
@@ -48,9 +47,9 @@ class Player(Entity):
             "up_attack": [],
             "down_attack": [],
         }
-        path = "../graphics/"
+        asset_root = GRAPHICS_DIR
 
-        self.import_graphics(path, "player", self.animations)
+        self.import_graphics(asset_root, "player", self.animations)
 
         # movement
         self.obstacle_sprites = obstacle_sprites
@@ -112,9 +111,9 @@ class Player(Entity):
         self.vulnerable_cooldown = 2000
 
         # import sound
-        self.weapon_attack_sound = pygame.mixer.Sound("../audio/sword.wav")
+        self.weapon_attack_sound = load_sound(AUDIO_DIR / "sword.wav")
         self.weapon_attack_sound.set_volume(0.3)
-        self.player_death_sound = pygame.mixer.Sound("../audio/death.wav")
+        self.player_death_sound = load_sound(AUDIO_DIR / "death.wav")
 
     def get_variable(self, dict: dict, key):
         return dict.get(key)

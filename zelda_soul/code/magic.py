@@ -1,22 +1,23 @@
 import pygame
-from particles import AnimationPlayer
-from settings import TILESIZE
 from random import randint
-
 from typing import TYPE_CHECKING
 
+from .particles import AnimationPlayer
+from .resources import load_sound
+from .settings import AUDIO_DIR, TILESIZE
+
 if TYPE_CHECKING:
-    from entity import Entity
-    from tile import Tile
-    from player import Player
+    from .entity import Entity
+    from .tile import Tile
+    from .player import Player
 
 
 class MagicPlayer:
     def __init__(self, animation_player: AnimationPlayer):
         self.animation_player = animation_player
         self.sounds = {
-            "heal": pygame.mixer.Sound("../audio/heal.wav"),
-            "flame": pygame.mixer.Sound("../audio/Fire.wav"),
+            "heal": load_sound(AUDIO_DIR / "heal.wav"),
+            "flame": load_sound(AUDIO_DIR / "Fire.wav"),
         }
 
     def heal(self, player: "Player", strength, cost, groups):

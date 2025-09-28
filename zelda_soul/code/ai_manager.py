@@ -1,11 +1,11 @@
 import asyncio
 import json
 import threading
-from api import API
-from settings import INFERENCE_MODE
+from .api import API
+from .settings import INFERENCE_MODE
 from collections import namedtuple
-from persona import Persona
-from priorityqueue import PriorityQueueWithUpdate
+from .persona import Persona
+from .priorityqueue import PriorityQueueWithUpdate
 
 # A structured way to define AI tasks
 Task = namedtuple('Task', ['entity_id', 'type', 'prompt', 'metadata'])

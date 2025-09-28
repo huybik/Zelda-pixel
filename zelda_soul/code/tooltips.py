@@ -1,5 +1,5 @@
 import pygame
-from settings import UI_FONT, UI_FONT_SIZE, TEXT_COLOR, UI_BG_COLOR, UI_BORDER_COLOR
+from .settings import UI_FONT, UI_FONT_SIZE, TEXT_COLOR, UI_BG_COLOR, UI_BORDER_COLOR
 
 
 class TextBubble(pygame.sprite.Sprite):

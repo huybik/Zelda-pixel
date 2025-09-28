@@ -1,8 +1,9 @@
 import pygame
-from particles import AnimationPlayer
-from support import get_distance_direction
-from resources import load_animation_folder, load_sound
-from event_bus import event_bus, GameEvent
+from .particles import AnimationPlayer
+from .support import get_distance_direction
+from .resources import load_animation_folder, load_sound
+from .event_bus import event_bus, GameEvent
+from .settings import AUDIO_DIR
 
 
 class Entity(pygame.sprite.Sprite):
@@ -63,8 +64,8 @@ class Entity(pygame.sprite.Sprite):
         self.first_observation = False
 
         # sounds (cached)
-        self.death_sound = load_sound("../audio/death.wav")
-        self.hit_sound = load_sound("../audio/hit.wav")
+        self.death_sound = load_sound(AUDIO_DIR / "death.wav")
+        self.hit_sound = load_sound(AUDIO_DIR / "hit.wav")
         self.death_sound.set_volume(0.6)
         self.hit_sound.set_volume(0.6)
 

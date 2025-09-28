@@ -1,22 +1,25 @@
 import json
 import pygame
-from entity import Entity
-from settings import (
+from .entity import Entity
+from .settings import (
     monster_data,
     CHAT_INTERVAL,
     SHORT_TERM_MEMORY_LIMIT,
     MEMORY_FLUSH_THRESHOLD,
     SUMMARY_TRIGGER_COUNT,
+    AUDIO_DIR,
+    GRAPHICS_DIR,
 )
 import time
-from tooltips import TextBubble, StatusBars
-from persona import Persona
-from memstream import MemoryStream
-from support import get_distance_direction, wave_value
+from .tooltips import TextBubble, StatusBars
+from .persona import Persona
+from .memstream import MemoryStream
+from .support import get_distance_direction, wave_value
 import random
 from typing import TYPE_CHECKING
 from collections import deque
-from behavior_tree import (
+from .resources import load_sound
+from .behavior_tree import (
     BehaviorTree,
     Selector,
     Sequence,
@@ -24,14 +27,14 @@ from behavior_tree import (
     ActionNode,
     NodeStatus,
 )
-from event_bus import event_bus, GameEvent
+from .event_bus import event_bus, GameEvent
 
 if TYPE_CHECKING:
-    from entity import Entity
-    from tile import Tile
-    from player import Player
-    from ai_manager import AIManager
-    from compute_manager import ComputeManager
+    from .entity import Entity
+    from .tile import Tile
+    from .player import Player
+    from .ai_manager import AIManager
+    from .compute_manager import ComputeManager
 
 class Enemy(Entity):
     def __init__(
@@ -61,7 +64,7 @@ class Enemy(Entity):
         self.animations = {
             "idle": [], "move": [], "attack": [], "heal": [], "mine": [], "runaway": []
         }
-        self.import_graphics("../graphics/monsters/", name, self.animations)
+        self.import_graphics(GRAPHICS_DIR / "monsters", name, self.animations)
 
         self.action = "idle"
         
@@ -139,10 +142,9 @@ class Enemy(Entity):
         self.act_cooldown = 1000
         self.can_act = True
         
-        from resources import load_sound 
         self.attack_sound = load_sound(monster_info["attack_sound"])
         self.attack_sound.set_volume(0.6)
-        self.heal_sound = load_sound("../audio/heal.wav")
+        self.heal_sound = load_sound(AUDIO_DIR / "heal.wav")
         self.heal_sound.set_volume(0.6)
 
         # Tooltips and other components

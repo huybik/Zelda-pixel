@@ -1,14 +1,14 @@
 from __future__ import annotations
 import pygame
 from abc import ABC, abstractmethod
-from support import get_distance_direction
+from .support import get_distance_direction
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from enemy import Enemy
-    from player import Player
-    from entity import Entity
-    from tile import Tile
+    from .enemy import Enemy
+    from .player import Player
+    from .entity import Entity
+    from .tile import Tile
 
 class Behavior(ABC):
     """Abstract base class for all AI behaviors."""

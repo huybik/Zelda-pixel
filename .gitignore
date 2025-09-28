@@ -1,11 +1,20 @@
-memory/*
+# Development artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.DS_Store
+.env
 openai-key.txt
+
+# Generated data
+memory/*
 zelda_soul/memory/*
 zelda_soul/model/*
 
+# Build artifacts
 zelda_soul/code/zelda_soul.spec
 zelda_soul/code/dist/zelda_soul
 zelda_soul/code/output.jsonl
-poetry.lock
-*.pyc
+
+# Project docs
 prompt.md

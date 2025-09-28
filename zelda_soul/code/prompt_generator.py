@@ -1,10 +1,10 @@
 import json
 from typing import TYPE_CHECKING
-from memstream import MemoryStream
-from settings import OBSERVATION_WINDOW, SUMMARY_HISTORY_LIMIT, prompt_template, summary_template
+from .memstream import MemoryStream
+from .settings import OBSERVATION_WINDOW, SUMMARY_HISTORY_LIMIT, prompt_template, summary_template
 
 if TYPE_CHECKING:
-    from enemy import Enemy
+    from .enemy import Enemy
 
 class PromptGenerator:
     """

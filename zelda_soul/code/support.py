@@ -1,35 +1,39 @@
+from __future__ import annotations
+
 from csv import reader
-from os import walk
+from pathlib import Path
 import pygame
 from math import sin
-from typing import List
+
 try:
-    from resources import load_images_in_folder  # local import
+    from .resources import load_images_in_folder  # Local import
 except Exception:  # pragma: no cover - fallback if relative path issues
     load_images_in_folder = None  # type: ignore
 
 
-def import_csv_layout(path):
-    terrain_map = []
-    with open(path) as level_map:
-        layout = reader(level_map, delimiter=",")
-        for row in layout:
-            terrain_map.append(list(row))  # row is x, number of row is y
-        return terrain_map
+def import_csv_layout(path: str | Path) -> list[list[str]]:
+    layout_path = Path(path)
+    terrain_map: list[list[str]] = []
+    with layout_path.open() as level_map:
+        csv_reader = reader(level_map, delimiter=",")
+        for row in csv_reader:
+            terrain_map.append(list(row))
+    return terrain_map
 
 
-def import_folder(path):
+def import_folder(path: str | Path) -> list[pygame.Surface]:
     """Return list[Surface] for every image in folder (cached when possible)."""
     if load_images_in_folder:
         try:
             return load_images_in_folder(path)
         except Exception:
-            pass  # fall back to legacy logic
-    surface_list: List[pygame.Surface] = []
-    for _, _, img_files in walk(path):
-        for image in img_files:
-            full_path = path + "/" + image
-            image_surf = pygame.image.load(full_path).convert_alpha()
+            pass  # Fall back to legacy logic
+
+    surface_list: list[pygame.Surface] = []
+    directory = Path(path)
+    for image_path in sorted(directory.iterdir()):
+        if image_path.is_file():
+            image_surf = pygame.image.load(str(image_path)).convert_alpha()
             surface_list.append(image_surf)
     return surface_list
 

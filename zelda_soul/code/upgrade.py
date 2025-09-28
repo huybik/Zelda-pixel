@@ -1,6 +1,6 @@
 import pygame
-from player import Player
-from settings import (
+from .player import Player
+from .settings import (
     UI_FONT,
     UI_FONT_SIZE,
     UI_BG_COLOR,

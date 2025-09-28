@@ -8,7 +8,7 @@ from mlx_lm import load, generate
 from mlx_lm.sample_utils import make_sampler
 from openai import OpenAI
 
-from settings import MODEL_PATH, CONTEXT_LENGTH, OBSERVATION_WINDOW
+from .settings import MODEL_PATH, CONTEXT_LENGTH, OBSERVATION_WINDOW
 
 SYSTEM_PROMPT = """You are a concise strategic planner for game NPCs.
 Guidelines:

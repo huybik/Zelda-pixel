@@ -1,8 +1,8 @@
 import json
 import re
 import time
-from memstream import MemoryStream
-from prompt_generator import PromptGenerator  # Updated import
+from .memstream import MemoryStream
+from .prompt_generator import PromptGenerator  # Updated import
 
 class Persona:
     """

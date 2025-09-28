@@ -1,20 +1,19 @@
 import pygame
-import threading
-from player import Player
-from tile import Tile
-from settings import TILESIZE
-from support import import_csv_layout, import_folder
+from .player import Player
+from .tile import Tile
+from .settings import GRAPHICS_DIR, MAP_DIR, TILESIZE
+from .support import import_csv_layout, import_folder
 import random
 from typing import Dict
-from weapon import Weapon
-from ui import UI
-from enemy import Enemy
-from particles import AnimationPlayer
-from upgrade import Upgrade
-from camera import YSortCameraGroup
-from magic import MagicPlayer
-from ai_manager import AIManager
-from compute_manager import ComputeManager
+from .weapon import Weapon
+from .ui import UI
+from .enemy import Enemy
+from .particles import AnimationPlayer
+from .upgrade import Upgrade
+from .camera import YSortCameraGroup
+from .magic import MagicPlayer
+from .ai_manager import AIManager
+from .compute_manager import ComputeManager
 
 class Level:
     def __init__(self) -> None:
@@ -45,14 +44,14 @@ class Level:
 
     def create_map(self):
         layouts: Dict[str, list[list[str]]] = {
-            "boundary": import_csv_layout("../map/map_FloorBlocks.csv"),
-            "grass": import_csv_layout("../map/map_Grass.csv"),
-            "object": import_csv_layout("../map/map_Objects.csv"),
-            "entities": import_csv_layout("../map/map_Entities.csv"),
+            "boundary": import_csv_layout(MAP_DIR / "map_FloorBlocks.csv"),
+            "grass": import_csv_layout(MAP_DIR / "map_Grass.csv"),
+            "object": import_csv_layout(MAP_DIR / "map_Objects.csv"),
+            "entities": import_csv_layout(MAP_DIR / "map_Entities.csv"),
         }
         graphics = {
-            "grass": import_folder("../graphics/Grass"),
-            "object": import_folder("../graphics/objects"),
+            "grass": import_folder(GRAPHICS_DIR / "Grass"),
+            "object": import_folder(GRAPHICS_DIR / "objects"),
         }
         enemy_id_map = {"390": "bamboo", "391": "spirit", "392": "raccoon", "393": "squid"}
 

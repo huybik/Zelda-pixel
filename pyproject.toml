@@ -10,6 +10,7 @@ openai = "^1.54.4"
 pygame = "^2.6.1"
 python-dotenv = "^1.0.1"
 ipywidgets = "^8.1.5"
+mlx-lm = "^0.4.0"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"

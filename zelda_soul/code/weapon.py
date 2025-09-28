@@ -1,6 +1,6 @@
 import pygame
-from player import Player
-from settings import weapon_data
+from .player import Player
+from .settings import GRAPHICS_DIR, weapon_data
 
 
 class Weapon(pygame.sprite.Sprite):
@@ -14,16 +14,14 @@ class Weapon(pygame.sprite.Sprite):
         self.allign()
 
     def allign(self):
-        weapon_path = "../graphics/weapons"
+        weapon_path = GRAPHICS_DIR / "weapons"
 
         self.direction = self.player.action.split("_")[0]
 
         if self.player.attacking and self.player.attack_type == "weapon":
-            # set weapon surf attack allign with player
-
-            self.image = pygame.image.load(
-                f"{weapon_path}/{self.player.weapon}/{self.direction}.png"
-            ).convert_alpha()
+            # set weapon surf attack align with player
+            weapon_image = weapon_path / self.player.weapon / f"{self.direction}.png"
+            self.image = pygame.image.load(str(weapon_image)).convert_alpha()
 
             if self.direction == "right":
                 self.rect = self.image.get_rect(
