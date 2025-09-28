@@ -44,7 +44,9 @@ class Persona:
             characteristic=entity.characteristic,
             observation=observations.replace('{', '[').replace('}', ']'),
             summary=str(summary).replace('{', '[').replace('}', ']'),
-        ) + f"\nTargets: entities={target_entities} resources={target_resources}"
+            target_entities=target_entities,
+            target_resources=target_resources
+        )
         return prompt
 
     def parse_decision_response(self, response: str) -> dict:
