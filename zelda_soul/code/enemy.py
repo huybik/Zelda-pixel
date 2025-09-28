@@ -6,6 +6,7 @@ from settings import (
     SUMMARY_INTERVAL,
     OBSERVATION_TO_SUMMARY,
     MEMORY_SIZE,
+    INFERENCE_MODE
 )
 from debug import debug
 import time
@@ -48,7 +49,7 @@ class Enemy(Entity):
         self.sprite_type = "enemy"
         self.groups = groups
         self.memory = MemoryStream()
-        self.persona = Persona()
+        self.persona = Persona(INFERENCE_MODE)
         self.global_queue = global_queue
 
         # graphic setup

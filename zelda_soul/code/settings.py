@@ -5,7 +5,9 @@ FPS = 60
 TILESIZE = 64
 
 # model
-MODEL_PATH = "../model/Llama-3.2-1B-Instruct.Q4_K_M.gguf"
+# MODEL_PATH = "gemma-3-270m-it-MLX-4bit"
+MODEL_PATH = "gemma-3-1b-it-qat-4bit"
+
 # MODEL_PATH = "../model/Vikhr-Qwen-2.5-0.5B-instruct-Q4_K_M.gguf"
 INFERENCE_MODE = "local"
 CONTEXT_LENGTH = 8192

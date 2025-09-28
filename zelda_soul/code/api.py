@@ -1,6 +1,8 @@
 from openai import OpenAI  # New import
 import asyncio
-from llama_cpp import Llama
+from pathlib import Path
+from mlx_lm import load, generate
+from mlx_lm.sample_utils import make_sampler
 from settings import MODEL_PATH, CONTEXT_LENGTH
 
 # import google.generativeai as genai
@@ -12,17 +14,31 @@ SYSTEM_PROMPT = """You are an smart being that like to plan your action"""
 
 class LocalAPI:
     def __init__(self):
-        self.client = Llama(
-            model_path=MODEL_PATH,
-            # n_threads=8,
-            n_ctx=CONTEXT_LENGTH,
-            verbose=True,
-            n_gpu_layers=-1,
-            use_mlock=True,
-            # use_mmap=True,
-            n_batch=226,
-            seed=42,
+        model_config = {"max_seq_len": CONTEXT_LENGTH} if CONTEXT_LENGTH else {}
+
+        self.model_path = self._resolve_model_path(MODEL_PATH)
+        self.model, self.tokenizer = load(
+            self.model_path,
+            model_config=model_config,
         )
+        self.sampler = make_sampler(temp=0.0)
+        self.max_tokens = 256
+
+    def _resolve_model_path(self, configured_path: str) -> str:
+        """Resolve the configured model path against common project locations."""
+
+        base_dir = Path(__file__).resolve().parent
+        candidates = [
+            Path(configured_path),
+            base_dir / configured_path,
+            base_dir.parent / "model" / configured_path,
+        ]
+
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+
+        return configured_path
 
     async def get_response(self, user_input):
 
@@ -35,17 +51,26 @@ class LocalAPI:
             loop = asyncio.get_event_loop()
             current = time.time()
 
+            if hasattr(self.tokenizer, "apply_chat_template"):
+                prompt = self.tokenizer.apply_chat_template(
+                    messages, add_generation_prompt=True
+                )
+            else:
+                prompt = "\n".join(
+                    f"{message['role'].upper()}: {message['content']}" for message in messages
+                )
+
             response = await loop.run_in_executor(
                 None,  # None uses the default executor
-                lambda: self.client.create_chat_completion(
-                    messages=messages,
-                    temperature=0,
-                    # max_tokens=256,
-                    # repeat_penalty=1.1,
-                    # stop=["END"],
+                lambda: generate(
+                    self.model,
+                    self.tokenizer,
+                    prompt=prompt,
+                    sampler=self.sampler,
+                    max_tokens=self.max_tokens,
                 ),
             )
-            ai_response = response["choices"][0]["message"]["content"].strip()
+            ai_response = response.strip()
 
             print(f"Time taken: {time.time() - current}")
 
