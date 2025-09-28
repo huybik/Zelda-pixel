@@ -2,6 +2,11 @@ from csv import reader
 from os import walk
 import pygame
 from math import sin
+from typing import List
+try:
+    from resources import load_images_in_folder  # local import
+except Exception:  # pragma: no cover - fallback if relative path issues
+    load_images_in_folder = None  # type: ignore
 
 
 def import_csv_layout(path):
@@ -14,15 +19,18 @@ def import_csv_layout(path):
 
 
 def import_folder(path):
-    # add list of surfaces that is all the images in folder
-    surface_list = []
-
+    """Return list[Surface] for every image in folder (cached when possible)."""
+    if load_images_in_folder:
+        try:
+            return load_images_in_folder(path)
+        except Exception:
+            pass  # fall back to legacy logic
+    surface_list: List[pygame.Surface] = []
     for _, _, img_files in walk(path):
         for image in img_files:
             full_path = path + "/" + image
             image_surf = pygame.image.load(full_path).convert_alpha()
             surface_list.append(image_surf)
-
     return surface_list
 
 

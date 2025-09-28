@@ -129,10 +129,11 @@ class Enemy(Entity):
         self.act_cooldown = 1000
         self.can_act = True
 
-        # sound
-        self.attack_sound = pygame.mixer.Sound(monster_info["attack_sound"])
+        # sound (cached)
+        from resources import load_sound
+        self.attack_sound = load_sound(monster_info["attack_sound"])
         self.attack_sound.set_volume(0.6)
-        self.heal_sound = pygame.mixer.Sound("../audio/heal.wav")
+        self.heal_sound = load_sound("../audio/heal.wav")
         self.heal_sound.set_volume(0.6)
 
         # Add tooltips

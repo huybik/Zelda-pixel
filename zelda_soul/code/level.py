@@ -5,6 +5,7 @@ from settings import TILESIZE, INFERENCE_MODE
 from debug import debug
 from support import import_csv_layout, import_folder
 import random
+from typing import Dict
 from weapon import Weapon
 from ui import UI
 from enemy import Enemy
@@ -56,7 +57,7 @@ class Level:
         # global task queue for chat
 
     def create_map(self):
-        layouts = {
+        layouts: Dict[str, list[list[str]]] = {
             "boundary": import_csv_layout("../map/map_FloorBlocks.csv"),
             "grass": import_csv_layout("../map/map_Grass.csv"),
             "object": import_csv_layout("../map/map_Objects.csv"),
@@ -66,6 +67,8 @@ class Level:
             "grass": import_folder("../graphics/Grass"),
             "object": import_folder("../graphics/objects"),
         }
+
+        enemy_id_map = {"390": "bamboo", "391": "spirit", "392": "raccoon", "393": "squid"}
 
         for sprite_type, layout in layouts.items():
             for row_index, row in enumerate(layout):
@@ -116,22 +119,15 @@ class Level:
                                 )
                             )
                         if sprite_type == "entities":
-                            if col == "394":  # 394 is player value on map plan
+                            if col == "394":  # player id
                                 self.player = Player(
                                     (x, y),
                                     [self.visible_sprites, self.attackable_sprites],
                                     self.obstacle_sprites,
                                     self.create_magic,
                                 )
-                            else:
-                                if col == "390":
-                                    name = "bamboo"
-                                elif col == "391":
-                                    name = "spirit"
-                                elif col == "392":
-                                    name = "raccoon"
-                                elif col == "393":
-                                    name = "squid"
+                            elif col in enemy_id_map:
+                                name = enemy_id_map[col]
                                 full_name = f"{name}{col_index}{row_index}"
                                 self.entities.append(
                                     Enemy(
@@ -145,7 +141,6 @@ class Level:
                                         ],
                                         self.obstacle_sprites,
                                         self.visible_sprites,
-                                        # self.api,
                                         self.global_queue,
                                     )
                                 )
