@@ -14,6 +14,7 @@ from upgrade import Upgrade
 from camera import YSortCameraGroup
 from magic import MagicPlayer
 from ai_manager import AIManager
+from compute_manager import ComputeManager
 
 class Level:
     def __init__(self) -> None:
@@ -31,6 +32,10 @@ class Level:
         # AI Manager setup
         self.ai_manager = AIManager()
         self.ai_manager.start()
+
+        # Compute Manager setup
+        self.compute_manager = ComputeManager()
+        self.compute_manager.start()
 
         self.ui = UI()
         self.create_map()
@@ -78,7 +83,8 @@ class Level:
                                     Enemy(
                                         name, full_name, (x, y),
                                         [self.visible_sprites, self.attack_sprites, self.attackable_sprites],
-                                        self.obstacle_sprites, self.visible_sprites, self.ai_manager
+                                        self.obstacle_sprites, self.visible_sprites, self.ai_manager,
+                                        self.compute_manager
                                     )
                                 )
         self.weapon = Weapon(self.player, [self.visible_sprites, self.attack_sprites])
@@ -120,6 +126,7 @@ class Level:
             self.collision()
 
     def shutdown(self):
-        """Gracefully stops the AI manager."""
+        """Gracefully stops manager threads."""
         print("Shutting down level...")
         self.ai_manager.stop()
+        self.compute_manager.stop()

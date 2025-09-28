@@ -8,7 +8,6 @@ from memstream import MemoryStream
 from support import get_distance_direction, wave_value
 import random
 from typing import TYPE_CHECKING
-from queue import PriorityQueue
 from behaviors import AggressiveBehavior, FriendlyBehavior, NeutralBehavior, Behavior
 
 if TYPE_CHECKING:
@@ -16,6 +15,7 @@ if TYPE_CHECKING:
     from tile import Tile
     from player import Player
     from ai_manager import AIManager
+    from compute_manager import ComputeManager
 
 class Enemy(Entity):
     def __init__(
@@ -27,12 +27,14 @@ class Enemy(Entity):
         obstacle_sprites,
         visible_sprite,
         ai_manager: "AIManager",
+        compute_manager: "ComputeManager",
     ):
         super().__init__(groups)
         self.sprite_type = "enemy"
         self.memory = MemoryStream()
         self.persona = Persona()
         self.ai_manager = ai_manager
+        self.compute_manager = compute_manager
 
         # Graphics and basic setup
         self.animations = {
@@ -42,10 +44,9 @@ class Enemy(Entity):
 
         self.action = "idle"
         
-        # Defensive check to prevent crash if 'idle' animation is missing frames
         if not self.animations.get(self.action):
-            self.image = pygame.Surface((64, 64)) # Create a placeholder
-            self.image.fill('magenta') # Use a bright color to easily spot missing assets
+            self.image = pygame.Surface((64, 64))
+            self.image.fill('magenta')
             print(f"Warning: Animation frames for action '{self.action}' not found for '{name}'.")
         else:
             self.image = self.animations[self.action][0]
@@ -59,8 +60,8 @@ class Enemy(Entity):
         self.visible_sprite = visible_sprite
         self.target_location = pygame.math.Vector2()
         self.path = None
+        self.is_path_requested = False
         self.old_target_location = pygame.math.Vector2()
-
 
         # Stats
         monster_info = monster_data[name]
@@ -84,7 +85,6 @@ class Enemy(Entity):
         self.timber = 0
         self.max_timber = 10
 
-
         # AI Behavior (Strategy Pattern)
         self.behavior: Behavior = self._get_behavior(self.characteristic)
 
@@ -102,13 +102,11 @@ class Enemy(Entity):
         self.act_cooldown = 1000
         self.can_act = True
         
-        # sound (cached)
         from resources import load_sound 
         self.attack_sound = load_sound(monster_info["attack_sound"])
         self.attack_sound.set_volume(0.6)
         self.heal_sound = load_sound("../audio/heal.wav")
         self.heal_sound.set_volume(0.6)
-
 
         # Tooltips and other components
         self.text_bubble = TextBubble(self.visible_sprite)
@@ -136,28 +134,30 @@ class Enemy(Entity):
 
     def process_ai_responses(self):
         """Polls for and applies AI responses."""
-        new_decision_json = self.ai_manager.get_response(self.full_name, 'decision')
-        if new_decision_json:
-            try:
-                parsed_decision = self.persona.parse_decision_response(new_decision_json)
-                self.set_decision(parsed_decision)
-            except Exception as e:
-                print(f"Failed to parse decision for {self.full_name}: {new_decision_json} | Error: {e}")
+        parsed_decision = self.ai_manager.get_response(self.full_name, 'decision')
+        if parsed_decision:
+            self.set_decision(parsed_decision)
 
         new_summary_text = self.ai_manager.get_response(self.full_name, 'summary')
         if new_summary_text and new_summary_text != "ERROR":
             self.persona.save_summary(new_summary_text, f"summary_{self.full_name}.json")
+            
+    def process_compute_responses(self):
+        """Polls for and applies compute worker responses."""
+        new_path = self.compute_manager.get_response(self.full_name, 'pathfinding')
+        if new_path is not None:
+            self.path = new_path
+            self.is_path_requested = False
 
     def enemy_update(self, player: "Player", entities: list["Entity"], objects: list["Tile"]):
         """Main update loop for the enemy."""
         distance, _ = get_distance_direction(self, player)
         self.process_ai_responses()
+        self.process_compute_responses()
         
         nearby_entities = [e for e in entities if get_distance_direction(self, e)[0] <= self.notice_radius and e != self]
         nearby_objects = [o for o in objects if get_distance_direction(self, o)[0] <= self.notice_radius]
 
-
-        # Use the behavior to update actions and targets
         if distance <= self.notice_radius:
             self.behavior.update(self, player, nearby_entities, nearby_objects)
 
@@ -165,7 +165,6 @@ class Enemy(Entity):
         self.control_update(player, nearby_entities, nearby_objects)
         self.check_death()
 
-        # Update tooltips
         self.status_bars.update_rect(self)
         if self.reason:
             self.text_bubble.update_text(f"{self.action} {self.target_name or ''}: {self.reason}", self.rect)
@@ -189,86 +188,36 @@ class Enemy(Entity):
         if self.vigilant > 0:
             tinted_image = self.image.copy()
             alpha = min(255, int((self.vigilant / 100) * 255))
-            tinted_image.fill(
-                (255, max(255 - alpha, 128), max(255 - alpha, 128)),
-                special_flags=pygame.BLEND_RGBA_MULT,
-            )
+            tinted_image.fill((255, max(255 - alpha, 128), max(255 - alpha, 128)), special_flags=pygame.BLEND_RGBA_MULT)
             self.image = tinted_image
 
     def move(self, target: pygame.math.Vector2, speed: int, objects: list = None, tile_size=64):
         current = pygame.math.Vector2(self.hitbox.centerx, self.hitbox.centery)
-
-        def to_grid(pos, tile_size):
-            return (int(pos.x // tile_size), int(pos.y // tile_size))
-
-        def to_world(grid, tile_size):
-            return pygame.math.Vector2(
-                grid[0] * tile_size + tile_size / 2,
-                grid[1] * tile_size + tile_size / 2,
-            )
-
-        def get_occupied_grids(rect, tile_size):
-            grids = set()
-            start_x, start_y = int(rect.left // tile_size), int(rect.top // tile_size)
-            end_x, end_y = int(rect.right // tile_size), int(rect.bottom // tile_size)
-            for x in range(start_x, end_x + 1):
-                for y in range(start_y, end_y + 1):
-                    grids.add((x, y))
-            return grids
-
-        def find_nearest_walkable(grid, obstacle_grids):
-            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                neighbor = (grid[0] + dx, grid[1] + dy)
-                if neighbor not in obstacle_grids:
-                    return neighbor
-            return None
-
-        def astar_pathfinding(start, goal, obstacles, tile_size):
-            start_grid, goal_grid = to_grid(start, tile_size), to_grid(goal, tile_size)
-            obstacle_grids = set().union(*(get_occupied_grids(obj.hitbox, tile_size) for obj in obstacles))
-            if goal_grid in obstacle_grids:
-                goal_grid = find_nearest_walkable(goal_grid, obstacle_grids)
-                if not goal_grid: return []
-
-            def heuristic(a, b): return abs(a[0] - b[0]) + abs(a[1] - b[1])
-            
-            open_set = PriorityQueue(); open_set.put((0, start_grid))
-            came_from, g_score = {}, {start_grid: 0}
-            f_score = {start_grid: heuristic(start_grid, goal_grid)}
-            
-            while not open_set.empty():
-                _, current_grid = open_set.get()
-                if current_grid == goal_grid:
-                    path = []
-                    while current_grid in came_from:
-                        path.append(to_world(current_grid, tile_size))
-                        current_grid = came_from[current_grid]
-                    path.reverse(); return path
-                
-                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    neighbor = (current_grid[0] + dx, current_grid[1] + dy)
-                    if neighbor in obstacle_grids: continue
-                    tentative_g_score = g_score[current_grid] + 1
-                    if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
-                        came_from[neighbor] = current_grid
-                        g_score[neighbor] = tentative_g_score
-                        f_score[neighbor] = tentative_g_score + heuristic(neighbor, goal_grid)
-                        open_set.put((f_score[neighbor], neighbor))
-            return []
+        
+        if not target: self.direction = pygame.math.Vector2()
 
         if target and objects:
-            if to_grid(target, tile_size) != to_grid(self.old_target_location, tile_size) or not self.path:
-                self.old_target_location = target
-                self.path = astar_pathfinding(current, target, objects, tile_size)
+            is_close_to_target = current.distance_to(target) < 5
+            needs_new_path = target.distance_to(self.old_target_location) > tile_size / 4
+
+            if (needs_new_path or (not self.path and not is_close_to_target)) and not self.is_path_requested:
+                self.old_target_location = target.copy()
+                obstacle_hitboxes = [obj.hitbox for obj in objects]
+                task_data = {'start_pos': current, 'goal_pos': target, 'obstacles': obstacle_hitboxes, 'tile_size': tile_size}
+                self.compute_manager.request(self.full_name, 'pathfinding', task_data)
+                self.is_path_requested = True
+                self.path = None
+                self.direction = pygame.math.Vector2()
+
+        if self.path:
+            next_waypoint = self.path[0]
+            if current.distance_to(next_waypoint) < 5:
+                self.path.pop(0)
             
             if self.path:
-                next_waypoint = pygame.math.Vector2(self.path[0])
-                desired_direction = next_waypoint - current
-                if desired_direction.magnitude() < 3:
-                    self.path.pop(0)
-                    if not self.path: self.direction = pygame.math.Vector2(0, 0); return
-                else:
-                    self.direction = desired_direction.normalize()
+                self.direction = (pygame.math.Vector2(self.path[0]) - current).normalize()
+            else:
+                self.direction = pygame.math.Vector2()
 
         if self.direction.magnitude() > 0:
             move_delta = self.direction * speed

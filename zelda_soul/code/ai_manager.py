@@ -1,9 +1,10 @@
 import asyncio
 from queue import Queue
 import threading
-from api import API  # Updated import
+from api import API
 from settings import INFERENCE_MODE
 from collections import namedtuple
+from persona import Persona
 
 # A structured way to define AI tasks
 Task = namedtuple('Task', ['entity_id', 'type', 'prompt'])
@@ -18,6 +19,7 @@ class AIManager:
         self.response_dict = {}  # {entity_id: {response_type: response}}
         self._running = True
         self.api = API(mode=INFERENCE_MODE)  # Use the unified API
+        self.persona = Persona()
 
     def run_worker_in_thread(self):
         """Entry point for the thread, runs the async worker."""
@@ -34,10 +36,21 @@ class AIManager:
                 task = self.request_queue.get()
                 print(f"AI Worker: Processing '{task.type}' for {task.entity_id}")
                 try:
-                    response = await self.api.get_response(user_input=task.prompt)
+                    response_text = await self.api.get_response(user_input=task.prompt)
                     if task.entity_id not in self.response_dict:
                         self.response_dict[task.entity_id] = {}
-                    self.response_dict[task.entity_id][task.type] = response
+                    
+                    # Parse decision responses directly in the worker thread
+                    if task.type == 'decision':
+                        try:
+                            parsed_response = self.persona.parse_decision_response(response_text)
+                            self.response_dict[task.entity_id][task.type] = parsed_response
+                        except Exception as e:
+                            print(f"AI worker failed to parse decision for {task.entity_id}: {e} | Raw: {response_text}")
+                            self.response_dict[task.entity_id][task.type] = None
+                    else:  # For summaries or other text-based responses
+                        self.response_dict[task.entity_id][task.type] = response_text
+                        
                     print(f"AI Worker: Got response for {task.entity_id}")
                 except Exception as e:
                     print(f"AI worker error for {task.entity_id}: {e}")
