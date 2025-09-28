@@ -831,7 +831,7 @@ class ActionStateMachine:
 
     def _tick_attack(self, target) -> NodeStatus:
         target = target or self.target
-        if target is None or getattr(target, "health", 0) <= 0:
+        if not (target and target.alive()):
             return NodeStatus.SUCCESS
 
         distance, _ = get_distance_direction(self.enemy, target)
@@ -868,7 +868,7 @@ class ActionStateMachine:
 
     def _tick_heal(self, target) -> NodeStatus:
         target = target or self.target
-        if target is None:
+        if not (target and target.alive()):
             return NodeStatus.FAILURE
 
         if getattr(target, "health", 0) >= getattr(target, "max_health", 0):
@@ -906,8 +906,8 @@ class ActionStateMachine:
 
     def _tick_mine(self, target) -> NodeStatus:
         target = target or self.target
-        if target is None:
-            return NodeStatus.FAILURE
+        if not (target and target.alive()):
+            return NodeStatus.SUCCESS
 
         distance, _ = get_distance_direction(self.enemy, target)
 
@@ -948,7 +948,7 @@ class ActionStateMachine:
 
     def _tick_guard(self, target) -> NodeStatus:
         target = target or self.target
-        if target is None:
+        if not (target and target.alive()):
             return NodeStatus.FAILURE
 
         guard_radius = float(self.metadata.get("radius", self.enemy.act_radius * 1.5))
@@ -965,7 +965,7 @@ class ActionStateMachine:
 
     def _tick_runaway(self, threat) -> NodeStatus:
         threat = threat or self.target
-        if threat is None:
+        if not (threat and threat.alive()):
             return NodeStatus.SUCCESS
 
         distance, direction = get_distance_direction(self.enemy, threat)
