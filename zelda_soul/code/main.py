@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import asyncio
+import os
+from pathlib import Path
 import pygame
 
 from game.level import Level
 from settings import WIDTH, HEIGTH, FPS, WATER_COLOR
 from game.debug import debug
 from dotenv import load_dotenv
+import environment.env as env
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+if Path.cwd() != BASE_DIR:
+    os.chdir(BASE_DIR)
 
 
 class Game:
@@ -15,7 +23,9 @@ class Game:
         self.screen = pygame.display.set_mode((WIDTH, HEIGTH))
         pygame.display.set_caption("Zelda")
         self.clock = pygame.time.Clock()
-        self.level = Level()
+
+        self.env = env.Environment()
+        self.level = Level(self.env)
 
         # sound
         main_sound = pygame.mixer.Sound("audio/main.ogg")

@@ -7,3 +7,4 @@ zelda_soul/code/zelda_soul.spec
 zelda_soul/code/dist/zelda_soul
 zelda_soul/code/output.jsonl
 poetry.lock
+*.pyc

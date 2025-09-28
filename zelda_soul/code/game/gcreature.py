@@ -17,6 +17,7 @@ class GameCreature(pygame.sprite.Sprite):
         self.pathfinder = Pathfinder()
         self.animations = AnimationPlayer()
         self.entity = creature
+        self.creature = creature
         self.group = groups
 
         # creature attributes
