@@ -7,7 +7,13 @@ from level import Level
 from settings import WIDTH, HEIGTH, FPS, WATER_COLOR
 from debug import debug
 from dotenv import load_dotenv
-
+import os
+import sys
+from pathlib import Path
+# make the project root (parent of this file's directory) the current working directory
+ROOT = Path(__file__).resolve().parent
+os.chdir(ROOT)
+sys.path.insert(0, str(ROOT))
 
 class Game:
     def __init__(self):
