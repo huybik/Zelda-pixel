@@ -1,18 +1,23 @@
 import asyncio
-from queue import Queue  # Thread-safe queue for communication
+from queue import Queue
 import threading
-from api import LocalAPI, OpenaiAPI
+from api import API  # Updated import
 from settings import INFERENCE_MODE
+from collections import namedtuple
+
+# A structured way to define AI tasks
+Task = namedtuple('Task', ['entity_id', 'type', 'prompt'])
 
 class AIManager:
     """
     Manages AI API calls in a separate background thread to prevent blocking the main game loop.
+    Processes tasks from a queue for enhanced flexibility.
     """
     def __init__(self):
         self.request_queue = Queue()
-        self.response_dict = {}  # Shared dictionary for results {entity_id: {response_type: response}}
+        self.response_dict = {}  # {entity_id: {response_type: response}}
         self._running = True
-        self.api = LocalAPI() if INFERENCE_MODE == "local" else OpenaiAPI()
+        self.api = API(mode=INFERENCE_MODE)  # Use the unified API
 
     def run_worker_in_thread(self):
         """Entry point for the thread, runs the async worker."""
@@ -22,22 +27,22 @@ class AIManager:
             print(f"AI Manager thread encountered an error: {e}")
 
     async def worker(self):
-        """The core worker loop that processes requests from the queue."""
+        """The core worker loop that processes tasks from the queue."""
         print("AI Worker started.")
         while self._running:
             if not self.request_queue.empty():
-                entity_id, request_type, prompt = self.request_queue.get()
-                print(f"AI Worker: Processing '{request_type}' for {entity_id}")
+                task = self.request_queue.get()
+                print(f"AI Worker: Processing '{task.type}' for {task.entity_id}")
                 try:
-                    response = await self.api.get_response(user_input=prompt)
-                    if entity_id not in self.response_dict:
-                        self.response_dict[entity_id] = {}
-                    self.response_dict[entity_id][request_type] = response
-                    print(f"AI Worker: Got response for {entity_id}")
+                    response = await self.api.get_response(user_input=task.prompt)
+                    if task.entity_id not in self.response_dict:
+                        self.response_dict[task.entity_id] = {}
+                    self.response_dict[task.entity_id][task.type] = response
+                    print(f"AI Worker: Got response for {task.entity_id}")
                 except Exception as e:
-                    print(f"AI worker error for {entity_id}: {e}")
+                    print(f"AI worker error for {task.entity_id}: {e}")
             else:
-                await asyncio.sleep(0.1)  # Sleep briefly to prevent busy-waiting
+                await asyncio.sleep(0.1)
         print("AI Worker stopped.")
 
     def start(self):
@@ -49,13 +54,11 @@ class AIManager:
         """Signals the worker to stop."""
         self._running = False
 
-    def request_decision(self, entity_id, prompt):
-        """Adds a non-blocking decision request to the queue."""
-        self.request_queue.put((entity_id, 'decision', prompt))
-
-    def request_summary(self, entity_id, prompt):
-        """Adds a non-blocking summary request to the queue."""
-        self.request_queue.put((entity_id, 'summary', prompt))
+    def request(self, entity_id, request_type, prompt):
+        """Adds a generic, non-blocking request to the queue."""
+        if prompt:
+            task = Task(entity_id=entity_id, type=request_type, prompt=prompt)
+            self.request_queue.put(task)
 
     def get_response(self, entity_id, response_type):
         """

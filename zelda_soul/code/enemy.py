@@ -1,20 +1,15 @@
 import pygame
 from entity import Entity
-from settings import (
-    monster_data,
-    CHAT_INTERVAL,
-    SUMMARY_INTERVAL,
-    MEMORY_SIZE,
-)
+from settings import monster_data, CHAT_INTERVAL, SUMMARY_INTERVAL, MEMORY_SIZE
 import time
 from tooltips import TextBubble, StatusBars
-import json
 from persona import Persona
 from memstream import MemoryStream
 from support import get_distance_direction, wave_value
 import random
 from typing import TYPE_CHECKING
 from queue import PriorityQueue
+from behaviors import AggressiveBehavior, FriendlyBehavior, NeutralBehavior, Behavior
 
 if TYPE_CHECKING:
     from entity import Entity
@@ -22,9 +17,7 @@ if TYPE_CHECKING:
     from player import Player
     from ai_manager import AIManager
 
-
 class Enemy(Entity):
-
     def __init__(
         self,
         name,
@@ -35,48 +28,44 @@ class Enemy(Entity):
         visible_sprite,
         ai_manager: "AIManager",
     ):
-
-        # general setup
         super().__init__(groups)
         self.sprite_type = "enemy"
-        self.groups = groups
         self.memory = MemoryStream()
         self.persona = Persona()
         self.ai_manager = ai_manager
 
-        # graphic setup
-        path = "../graphics/monsters/"
+        # Graphics and basic setup
         self.animations = {
-            "idle": [],
-            "move": [],
-            "attack": [],
-            "heal": [],
-            "mine": [],
-            "runaway": [],
+            "idle": [], "move": [], "attack": [], "heal": [], "mine": [], "runaway": []
         }
-        self.import_graphics(path, name, self.animations)
+        self.import_graphics("../graphics/monsters/", name, self.animations)
 
         self.action = "idle"
-        self.image = self.animations[self.action][self.frame_index]
-        self.rect = self.image.get_rect(topleft=pos)
+        
+        # Defensive check to prevent crash if 'idle' animation is missing frames
+        if not self.animations.get(self.action):
+            self.image = pygame.Surface((64, 64)) # Create a placeholder
+            self.image.fill('magenta') # Use a bright color to easily spot missing assets
+            print(f"Warning: Animation frames for action '{self.action}' not found for '{name}'.")
+        else:
+            self.image = self.animations[self.action][0]
 
+        self.rect = self.image.get_rect(topleft=pos)
         self.hitbox = self.rect
         self.starting_point = pos
 
-        # movement
+        # Movement
         self.obstacle_sprites = obstacle_sprites
         self.visible_sprite = visible_sprite
         self.target_location = pygame.math.Vector2()
-        self.current_speed = 0
-        self.old_target_location = pygame.math.Vector2()
-        self.tile_size = 64
         self.path = None
+        self.old_target_location = pygame.math.Vector2()
 
-        # stats
+
+        # Stats
+        monster_info = monster_data[name]
         self.name = name
-        monster_info = monster_data[self.name]
-        self.monster_info = monster_info
-
+        self.full_name = full_name
         self.health = monster_info["health"]
         self.max_health = monster_info["health"]
         self.exp = monster_info["exp"]
@@ -87,51 +76,100 @@ class Enemy(Entity):
         self.notice_radius = monster_info["notice_radius"]
         self.attack_type = monster_info["attack_type"]
         self.characteristic = monster_info["characteristic"]
-        self.full_name = full_name
-
         self.energy = self.max_health
         self.max_energy = self.max_health
         self.vigilant = 0
+        self.upgrade_cost = 100
+        self.upgrade_percentage = 0.01
+        self.timber = 0
+        self.max_timber = 10
 
-        # API call timers
+
+        # AI Behavior (Strategy Pattern)
+        self.behavior: Behavior = self._get_behavior(self.characteristic)
+
+        # Timers and cooldowns
         self.last_chat_time = 0
         self.last_summary_time = 0
         self.last_internal_move_update = 0
-
         self.chat_interval = CHAT_INTERVAL
         self.summary_interval = SUMMARY_INTERVAL
-        self.internal_move_update_interval = 500  # ticks
-
-        self.reason = None
-
-        # cooldowns
+        self.internal_move_update_interval = 500
         self.vulnerable = True
         self.vulnerable_time = 0
         self.vulnerable_duration = 1000
-
         self.act_time = 0
         self.act_cooldown = 1000
         self.can_act = True
-
+        
         # sound (cached)
-        from resources import load_sound
+        from resources import load_sound 
         self.attack_sound = load_sound(monster_info["attack_sound"])
         self.attack_sound.set_volume(0.6)
         self.heal_sound = load_sound("../audio/heal.wav")
         self.heal_sound.set_volume(0.6)
 
-        # Add tooltips
+
+        # Tooltips and other components
         self.text_bubble = TextBubble(self.visible_sprite)
         self.status_bars = StatusBars(self.visible_sprite)
+        self.reason = ""
 
-        # upgrade cost
-        self.upgrade_cost = 100
-        self.upgrade_percentage = 0.01  # this increase cost and stat
+    def _get_behavior(self, characteristic: str) -> Behavior:
+        """Assigns a behavior strategy based on the enemy's characteristic."""
+        if "friend" in characteristic or "help" in characteristic:
+            return FriendlyBehavior()
+        elif "aggressive" in characteristic or "enemy" in characteristic:
+            return AggressiveBehavior()
+        else:
+            return NeutralBehavior()
 
-        # inventory
-        self.timber = 0
-        self.max_timber = 10
+    def decide(self):
+        """Requests a decision from the AI manager using the current behavior."""
+        prompt = self.persona.prompt_generator.format_decision_prompt(self)
+        self.ai_manager.request(self.full_name, 'decision', prompt)
 
+    def summary(self):
+        """Requests a summary from the AI manager."""
+        prompt = self.persona.prompt_generator.format_summary_prompt(self)
+        self.ai_manager.request(self.full_name, 'summary', prompt)
+
+    def process_ai_responses(self):
+        """Polls for and applies AI responses."""
+        new_decision_json = self.ai_manager.get_response(self.full_name, 'decision')
+        if new_decision_json:
+            try:
+                parsed_decision = self.persona.parse_decision_response(new_decision_json)
+                self.set_decision(parsed_decision)
+            except Exception as e:
+                print(f"Failed to parse decision for {self.full_name}: {new_decision_json} | Error: {e}")
+
+        new_summary_text = self.ai_manager.get_response(self.full_name, 'summary')
+        if new_summary_text and new_summary_text != "ERROR":
+            self.persona.save_summary(new_summary_text, f"summary_{self.full_name}.json")
+
+    def enemy_update(self, player: "Player", entities: list["Entity"], objects: list["Tile"]):
+        """Main update loop for the enemy."""
+        distance, _ = get_distance_direction(self, player)
+        self.process_ai_responses()
+        
+        nearby_entities = [e for e in entities if get_distance_direction(self, e)[0] <= self.notice_radius and e != self]
+        nearby_objects = [o for o in objects if get_distance_direction(self, o)[0] <= self.notice_radius]
+
+
+        # Use the behavior to update actions and targets
+        if distance <= self.notice_radius:
+            self.behavior.update(self, player, nearby_entities, nearby_objects)
+
+        self.move(self.target_location, self.speed, objects)
+        self.control_update(player, nearby_entities, nearby_objects)
+        self.check_death()
+
+        # Update tooltips
+        self.status_bars.update_rect(self)
+        if self.reason:
+            self.text_bubble.update_text(f"{self.action} {self.target_name or ''}: {self.reason}", self.rect)
+    
     def cooldown(self):
         current_time = pygame.time.get_ticks()
         if not self.can_act and current_time - self.act_time >= self.act_cooldown:
@@ -158,7 +196,6 @@ class Enemy(Entity):
             self.image = tinted_image
 
     def move(self, target: pygame.math.Vector2, speed: int, objects: list = None, tile_size=64):
-        # A* pathfinding and movement logic remains the same...
         current = pygame.math.Vector2(self.hitbox.centerx, self.hitbox.centery)
 
         def to_grid(pos, tile_size):
@@ -188,7 +225,7 @@ class Enemy(Entity):
 
         def astar_pathfinding(start, goal, obstacles, tile_size):
             start_grid, goal_grid = to_grid(start, tile_size), to_grid(goal, tile_size)
-            obstacle_grids = set().union(*(get_occupied_grids(obj, tile_size) for obj in obstacles))
+            obstacle_grids = set().union(*(get_occupied_grids(obj.hitbox, tile_size) for obj in obstacles))
             if goal_grid in obstacle_grids:
                 goal_grid = find_nearest_walkable(goal_grid, obstacle_grids)
                 if not goal_grid: return []
@@ -222,7 +259,7 @@ class Enemy(Entity):
         if target and objects:
             if to_grid(target, tile_size) != to_grid(self.old_target_location, tile_size) or not self.path:
                 self.old_target_location = target
-                self.path = astar_pathfinding(current, target, [obj.hitbox for obj in objects], tile_size)
+                self.path = astar_pathfinding(current, target, objects, tile_size)
             
             if self.path:
                 next_waypoint = pygame.math.Vector2(self.path[0])
@@ -239,7 +276,6 @@ class Enemy(Entity):
             self.hitbox.y += move_delta.y; self.collision("vertical")
             self.rect.center = self.hitbox.center
     
-    # ... other methods like collision, attack, heal, save_observation, etc. remain largely the same ...
     def collision(self, direction):
         if direction == "horizontal":
             for sprite in self.obstacle_sprites:
@@ -290,7 +326,7 @@ class Enemy(Entity):
         energy = f'{int(entity.energy)}/{int(entity.stats["energy"])}' if entity.sprite_type == "player" else f"{int(entity.energy)}/{int(entity.max_energy)}"
         observation = {
             "entity_name": entity.full_name, "action": entity.action, "target_name": entity.target_name,
-            "observations": {"intention": entity.internal_event, "event": entity.outside_event, "observed": entity.observed_event},
+            "observations": {"intention": entity.internal_event, "event": self.outside_event, "observed": self.observed_event},
             "location": {"x": entity.rect.centerx, "y": entity.rect.centery},
             "stats": {"health": health, "energy": energy, "experience": int(entity.exp)}
         }
@@ -325,15 +361,11 @@ class Enemy(Entity):
             self.target_name = decision.get("target_name")
             self.vigilant = int(decision.get("vigilant", 0))
             
-            # Get the action proposed by the AI
             proposed_action = decision.get("action", "idle")
 
-            # Validate that the action has a corresponding animation
             if proposed_action in self.animations:
                 self.action = proposed_action
             else:
-                # If the action is invalid (e.g., "analyze"), default to "idle"
-                # You can add a print statement to help with debugging in the future
                 print(f"Warning: Invalid action '{proposed_action}' for {self.full_name}. Defaulting to 'idle'.")
                 self.action = "idle"
                 
@@ -397,32 +429,6 @@ class Enemy(Entity):
             elif self.action in ["attack", "mine", "heal"]:
                 self.target_location = pygame.math.Vector2(target.hitbox.center)
 
-    def decide(self):
-        prompt = self.persona.format_decision_prompt(self)
-        if prompt:
-            self.ai_manager.request_decision(self.full_name, prompt)
-
-    def summary(self):
-        prompt = self.persona.format_summary_prompt(self)
-        if prompt:
-            self.ai_manager.request_summary(self.full_name, prompt)
-
-    def process_ai_responses(self):
-        """Poll for new decisions or summaries from the AI manager and apply them."""
-        # Process decision
-        new_decision_json = self.ai_manager.get_response(self.full_name, 'decision')
-        if new_decision_json:
-            try:
-                parsed_decision = self.persona.parse_decision_response(new_decision_json)
-                self.set_decision(parsed_decision)
-            except Exception as e:
-                print(f"Failed to parse decision for {self.full_name}: {new_decision_json} | Error: {e}")
-        
-        # Process summary
-        new_summary_text = self.ai_manager.get_response(self.full_name, 'summary')
-        if new_summary_text and new_summary_text != "ERROR":
-            self.persona.save_summary(new_summary_text, f"summary_{self.full_name}.json")
-
     def update(self):
         self.animate()
         self.cooldown()
@@ -455,24 +461,3 @@ class Enemy(Entity):
             self.old_observed_event = self.observed_event
             self.old_outside_event = self.outside_event
             self.save_observation(player, entities, objects)
-
-    def enemy_update(self, player: "Player", entities: list["Entity"], objects: list["Tile"]):
-        distance, _ = get_distance_direction(self, player)
-        
-        # Poll for completed AI tasks first
-        self.process_ai_responses()
-
-        nearby_entities = [e for e in entities if get_distance_direction(self, e)[0] <= self.notice_radius and e != self]
-        nearby_objects = [o for o in objects if get_distance_direction(self, o)[0] <= self.notice_radius]
-
-        if distance <= self.notice_radius:
-            self.interaction(player, nearby_entities, nearby_objects)
-        
-        self.move(self.target_location, self.speed, objects)
-        self.control_update(player, nearby_entities, nearby_objects)
-        self.check_death()
-
-        # update tooltips
-        self.status_bars.update_rect(self)
-        if self.reason:
-            self.text_bubble.update_text(f"{self.action} {self.target_name}: {self.reason}", self.rect)

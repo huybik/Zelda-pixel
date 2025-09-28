@@ -1,15 +1,14 @@
-from openai import OpenAI  # New import
 import asyncio
+import os
+import time
 from pathlib import Path
-from functools import lru_cache
-from typing import Iterable, List, Dict, Optional
+from typing import List, Dict, Optional
+
 from mlx_lm import load, generate
 from mlx_lm.sample_utils import make_sampler
+from openai import OpenAI
+
 from settings import MODEL_PATH, CONTEXT_LENGTH, OBSERVATION_WINDOW
-
-# import google.generativeai as genai
-import time
-
 
 SYSTEM_PROMPT = """You are a concise strategic planner for game NPCs.
 Guidelines:
@@ -18,92 +17,74 @@ Guidelines:
 - Never invent entities or objects not present in context.
 """
 
-
-class LocalAPI:
-    """Local inference wrapper with cached model + lightweight prompt tools.
-
-    Features:
-    - Singleton model load (subsequent instances reuse the same weights/tokenizer)
-    - Deterministic sampling (temp=0.0)
-    - Prompt utilities (chat template fallbacks, context trimming)
-    - Optional streaming generation (future extensibility)
+class API:
     """
-
-    # Class-level cache to ensure model only loads once per interpreter
-    _loaded = False
+    Unified API wrapper for both local and OpenAI inference.
+    Configured via the 'mode' parameter during initialization.
+    """
+    _loaded_local_model = False
     _model = None
     _tokenizer = None
     _sampler = None
 
-    def __init__(self, max_tokens: int = 192):
-        if not LocalAPI._loaded:
+    def __init__(self, mode: str = "local", max_tokens: int = 192):
+        self.mode = mode
+        self.max_tokens = max_tokens
+        self.system_prompt = SYSTEM_PROMPT
+
+        if self.mode == "local":
+            self._initialize_local_model()
+        elif self.mode == "openai":
+            self.openai_model = "gpt-4o-mini"
+            self.client = self._load_openai_api_key()
+        else:
+            raise ValueError(f"Unsupported API mode: {self.mode}")
+
+    def _initialize_local_model(self):
+        """Initializes and caches the local model."""
+        if not API._loaded_local_model:
             model_config = {"max_seq_len": CONTEXT_LENGTH} if CONTEXT_LENGTH else {}
             model_path = self._resolve_model_path(MODEL_PATH)
             model, tokenizer = load(model_path, model_config=model_config)
-            sampler = make_sampler(temp=0.0)
-            LocalAPI._model = model
-            LocalAPI._tokenizer = tokenizer
-            LocalAPI._sampler = sampler
-            LocalAPI._loaded = True
-        self.model = LocalAPI._model
-        self.tokenizer = LocalAPI._tokenizer
-        self.sampler = LocalAPI._sampler
-        self.max_tokens = max_tokens
+            
+            API._model = model
+            API._tokenizer = tokenizer
+            API._sampler = make_sampler(temp=0.0)
+            API._loaded_local_model = True
+        
+        self.model = API._model
+        self.tokenizer = API._tokenizer
+        self.sampler = API._sampler
 
-    def _resolve_model_path(self, configured_path: str) -> str:
-        """Resolve the configured model path against common project locations."""
-
-        base_dir = Path(__file__).resolve().parent
-        candidates = [
-            Path(configured_path),
-            base_dir / configured_path,
-            base_dir.parent / "model" / configured_path,
-        ]
-
-        for candidate in candidates:
-            if candidate.exists():
-                return str(candidate)
-
-        return configured_path
-
-    # ------------------ Prompt Utilities ------------------ #
-    def _build_messages(self, user_input: str, system_prompt: Optional[str] = None,
-                          extra: Optional[List[Dict[str, str]]] = None) -> List[Dict[str, str]]:
-        system_prompt = system_prompt or SYSTEM_PROMPT
-        messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
-        if extra:
-            messages.extend(extra)
-        messages.append({"role": "user", "content": user_input})
-        return messages
-
-    def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
-        if hasattr(self.tokenizer, "apply_chat_template"):
-            try:
-                return self.tokenizer.apply_chat_template(messages, add_generation_prompt=True)
-            except Exception:
-                pass
-        return "\n".join(f"{m['role'].upper()}: {m['content']}" for m in messages) + "\nASSISTANT:"
-
-    def _truncate_observations(self, observations_json: str, max_items: int = OBSERVATION_WINDOW) -> str:
-        """Trim observations array in JSON string by naive slicing (fast + robust enough since upstream builds JSON)."""
+    def _load_openai_api_key(self):
+        """Loads the OpenAI API key from environment variables."""
         try:
-            import json
-            data = json.loads(observations_json)
-            if isinstance(data, list) and len(data) > max_items:
-                data = data[-max_items:]
-            return json.dumps(data, ensure_ascii=False)
-        except Exception:
-            return observations_json  # fallback silently
+            api_key = os.getenv("OPENAI_API_KEY")
+            if api_key:
+                return OpenAI(api_key=api_key)
+            else:
+                print("Error: OPENAI_API_KEY not found in environment variables")
+                return None
+        except Exception as e:
+            print(f"Error loading OpenAI API key: {e}")
+            return None
 
-    async def get_response(self, user_input: str, system_prompt: Optional[str] = None,
-                             extra_messages: Optional[List[Dict[str, str]]] = None) -> str:
-        messages = self._build_messages(user_input, system_prompt, extra_messages)
+    async def get_response(self, user_input: str, system_prompt: Optional[str] = None) -> str:
+        """Asynchronously gets a response from the configured AI model."""
+        if self.mode == "local":
+            return await self._get_local_response(user_input, system_prompt)
+        elif self.mode == "openai":
+            return await self._get_openai_response(user_input, system_prompt)
+        return "ERROR: Invalid mode"
+
+    async def _get_local_response(self, user_input: str, system_prompt: Optional[str]) -> str:
+        """Handles local model inference."""
+        messages = self._build_messages(user_input, system_prompt)
         try:
             loop = asyncio.get_event_loop()
             started = time.time()
             prompt = self._messages_to_prompt(messages)
             
-            # The blocking generate function is run in an executor to not block the event loop
             raw_text = await loop.run_in_executor(
                 None,
                 lambda: generate(
@@ -121,50 +102,52 @@ class LocalAPI:
             print(f"[LocalAPI] Error: {e}")
             return "ERROR"
 
-
-class OpenaiAPI:
-    def __init__(self, *args, **kwargs):
-        self.system_prompt = SYSTEM_PROMPT
-        self.model = "gpt-4o-mini"  # Using GPT-4 Mini model
-        self.client = self.load_api_key()
-
-    async def get_response(self, user_input, system_prompt=None):
+    async def _get_openai_response(self, user_input: str, system_prompt: Optional[str]) -> str:
+        """Handles OpenAI model inference."""
         if not self.client:
-             return "ERROR: OpenAI client not initialized."
-        if not system_prompt:
-            system_prompt = self.system_prompt
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input},
-        ]
-
+            return "ERROR: OpenAI client not initialized."
+        
+        messages = self._build_messages(user_input, system_prompt)
+        
         try:
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
-                None,  # None uses the default executor
+                None,
                 lambda: self.client.chat.completions.create(
-                    model=self.model, messages=messages
+                    model=self.openai_model, messages=messages
                 ),
             )
-            ai_response = response.choices[0].message.content
-            return ai_response
-
+            return response.choices[0].message.content
         except Exception as e:
             print(f"[OpenaiAPI] Error: {e}")
             return "ERROR"
 
-    def load_api_key(self):
-        import os
+    def _build_messages(self, user_input: str, system_prompt: Optional[str]) -> List[Dict[str, str]]:
+        """Builds the message structure for the API call."""
+        system_prompt = system_prompt or self.system_prompt
+        return [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_input},
+        ]
 
-        try:
-            api_key = os.getenv("OPENAI_API_KEY")
-            if api_key:
-                client = OpenAI(api_key=api_key)  # Initialize client with API key
-                return client
-            else:
-                print("Error: OPENAI_API_KEY not found in environment variables")
-                return None
-        except Exception as e:
-            print(f"Error loading API key: {e}")
-            return None
+    def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
+        """Converts messages to a string prompt for local models."""
+        if hasattr(self.tokenizer, "apply_chat_template"):
+            try:
+                return self.tokenizer.apply_chat_template(messages, add_generation_prompt=True)
+            except Exception:
+                pass
+        return "\n".join(f"{m['role'].upper()}: {m['content']}" for m in messages) + "\nASSISTANT:"
+
+    def _resolve_model_path(self, configured_path: str) -> str:
+        """Finds the local model path."""
+        base_dir = Path(__file__).resolve().parent
+        candidates = [
+            Path(configured_path),
+            base_dir / configured_path,
+            base_dir.parent / "model" / configured_path,
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+        return configured_path
