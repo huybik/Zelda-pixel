@@ -2,6 +2,7 @@ import pygame
 from particles import AnimationPlayer
 from support import get_distance_direction
 from resources import load_animation_folder, load_sound
+from event_bus import event_bus, GameEvent
 
 
 class Entity(pygame.sprite.Sprite):
@@ -87,6 +88,7 @@ class Entity(pygame.sprite.Sprite):
         if not self.vulnerable: return
 
         self.outside_event = f"attacked by {attacker.full_name}"
+        event_bus.emit(GameEvent.ENTITY_TAKES_DAMAGE, {"target": self, "attacker": attacker})
         self.vulnerable = False
         self.hit_sound.play()
         self.vulnerable_time = pygame.time.get_ticks()

@@ -18,9 +18,10 @@ OBSERVATION_WINDOW = 5  # limit number of recent observations sent to model for 
 
 # event
 OBSERVATION_COOLDOWN = 2000
-MEMORY_SIZE = 3
-SUMMARY_SIZE = 3
-OBSERVATION_TO_SUMMARY = 3
+SHORT_TERM_MEMORY_LIMIT = 10
+MEMORY_FLUSH_THRESHOLD = 5
+SUMMARY_HISTORY_LIMIT = 5
+SUMMARY_TRIGGER_COUNT = 5
 # ui
 BAR_HEIGHT = 20
 HEALTH_BAR_WIDTH = 150
@@ -154,29 +155,35 @@ Your personality trait is: {characteristic}.
 Your primary goal is to act according to your trait. Your secondary goal is survival.
 
 LAST KNOWN INFORMATION:
-- Recent Events (Observations): {observation}
-- Long-term Memory (Summary): {summary}
+- Short-term Observations: {observations}
+- Long-term Summary: {summary}
+- Relevant Experiences: {relevant_memories}
+- Event Context: {context}
 - Potential Targets:
   - Entities: {target_entities}
   - Resources: {target_resources}
 
-AVAILABLE ACTIONS:
-- "attack": Engage an entity.
-- "heal": Help a friendly entity (not yourself).
-- "mine": Gather from a resource.
-- "runaway": Flee from a threat.
-- "idle": Wait and observe.
+AVAILABLE HIGH-LEVEL GOALS:
+- "attack_enemy": Eliminate a hostile threat.
+- "defend_ally": Shield an ally or the player from harm.
+- "heal_ally": Restore health or energy to a friendly unit.
+- "gather_resource": Acquire valuable resources nearby.
+- "flee_threat": Escape immediate danger.
+- "patrol": Maintain awareness and control of the area.
 
 TASK:
-1. Analyze the situation.
-2. Decide on the best action based on your trait and goals.
-3. Choose a target from the list or "None".
-4. Set a vigilance level (0-100) based on perceived threat.
-5. Provide a brief, in-character reason (under 5 words).
+1. Analyze the situation and consider your personality.
+2. Select the most appropriate goal from the list (or "patrol" if nothing urgent).
+3. Choose a meaningful target (entity name, resource name, or "None").
+4. Assign a priority (0 = urgent reaction, 10 = low importance).
+5. Provide a short, in-character reason (under 8 words).
+6. Optionally include a "metadata" object for extra details (e.g., target_location).
 
 OUTPUT FORMAT:
-Return ONLY a single-line, minified JSON object. Do not include markdown, comments, or any other text.
-Example format: {{"action":"...","target_name":"...","vigilant":...,"reason":"..."}}
+Return ONLY a single-line, minified JSON object.
+Required keys: "goal", "target", "reason", "priority".
+Optional keys: "metadata" (object), "vigilant" (0-100).
+Example: {{"goal":"defend_ally","target":"player","priority":1,"reason":"protecting hero","metadata":{{"support":"heal"}}}}
 """
 
 summary_template = """

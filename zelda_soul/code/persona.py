@@ -3,7 +3,6 @@ import re
 import time
 from memstream import MemoryStream
 from prompt_generator import PromptGenerator  # Updated import
-from settings import MEMORY_SIZE
 
 class Persona:
     """
@@ -37,7 +36,7 @@ class Persona:
         print(f"Parsing decision: {candidate}")
         return json.loads(candidate)
 
-    def save_summary(self, summary_text: str, filename: str, threshold=MEMORY_SIZE):
-        """Saves the AI-generated summary to a file."""
+    def save_summary(self, entity_id: str, summary_text: str):
+        """Persists the AI-generated summary in the long-term memory store."""
         entry = {"timestamp": time.strftime("%Y-%m-%d %H:%M:%S"), "summary": summary_text}
-        self.memory.write_memory(entry, filename, threshold=threshold)
+        self.memory.write_summary(entity_id, entry)
