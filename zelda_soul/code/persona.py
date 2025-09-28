@@ -1,7 +1,7 @@
 from memstream import MemoryStream
 import json
 from typing import TYPE_CHECKING
-from settings import MEMORY_SIZE
+from settings import MEMORY_SIZE, OBSERVATION_WINDOW, prompt_template, summary_template
 from api import OpenaiAPI, LocalAPI
 import time
 
@@ -39,27 +39,28 @@ class Persona:
         return target_entities, target_resources
 
     def get_observations(self, observations):
+        # Keep only last OBSERVATION_WINDOW entries to reduce prompt tokens
+        window = observations[-OBSERVATION_WINDOW:] if observations else []
         result = [
             {
-                "timestamp": entry["timestamp"],
-                "observations": entry["self"].get("observations"),
+                "t": entry["timestamp"],
+                "obs": entry["self"].get("observations"),
             }
-            for entry in observations
+            for entry in window
         ]
-
-        return json.dumps(result)
+        return json.dumps(result, ensure_ascii=False)
 
     def get_progress(self, observations):
+        window = observations[-(OBSERVATION_WINDOW * 2):] if observations else []
         result = [
             {
-                "timestamp": entry["timestamp"],
-                "observations": entry["self"].get("observations"),
+                "t": entry["timestamp"],
+                "obs": entry["self"].get("observations"),
                 "stats": entry["self"].get("stats"),
             }
-            for entry in observations
+            for entry in window
         ]
-
-        return json.dumps(result)
+        return json.dumps(result, ensure_ascii=False)
 
     async def fetch_decision(
         self,
@@ -76,46 +77,42 @@ class Persona:
         observations = self.get_observations(stream_data)
         target_entities, target_resources = self.get_actions(stream_data[-1])
 
-        prompt = f"""
-            Context:
-            You are {entity.full_name}, and you are {entity.characteristic}.
-            
-            'progress summary': {summary}
-            'Observations':
-            {observations}
-            
-            
-            
-            Can only interact with target entities:
-            {target_entities}
-            And can only mine target resources:
-            {target_resources}
-            Else target_name to "None" if no target.
-            
-            Next step explain:
-
-            "action": Chose one from ("attack", "runaway", "heal") target entity or ("mine") target resource. You cant heal yourself.
-            "target_name": Your target name
-            "vigilant": A score from 0 to 100 indicating your current vigilant level.
-            "reason": less than 5 words.
-
-            Respond in single JSON with the format of "Next step":{{"action": string,"target_name": string,"vigilant": int,"reason": reason}}
-            'Next step':
-            """
+        prompt = prompt_template.format(
+            full_name=entity.full_name,
+            characteristic=entity.characteristic,
+            observation=observations.replace('{', '[').replace('}', ']'),
+            summary=str(summary).replace('{', '[').replace('}', ']'),
+        ) + f"\nTargets: entities={target_entities} resources={target_resources}"
         try:
             response = await self.api.get_response(user_input=prompt)
             try:
                 print(f"{entity.full_name} prompt: {prompt}\n")
-
-                response = "{" + response.split("{")[-1].split("}")[0] + "}"
-                print(f"{entity.full_name} decision: {response} \n")
-
-                data = json.loads(response)
+                raw = response.strip()
+                # Normalize fenced or triple backtick content
+                if raw.startswith("```"):
+                    raw = raw.strip("`\n ")
+                    # remove possible language tag like json
+                    parts = raw.split("\n", 1)
+                    if len(parts) == 2 and not parts[0].lstrip().startswith("{"):
+                        raw = parts[1]
+                # Extract first JSON object greedily
+                import re
+                obj_match = re.search(r"\{.*\}", raw, re.DOTALL)
+                candidate = obj_match.group(0) if obj_match else raw
+                # If wrapped like {"Next step": {...}} unwrap
+                if '"Next step"' in candidate:
+                    try:
+                        outer = json.loads(candidate)
+                        if isinstance(outer, dict) and "Next step" in outer:
+                            candidate = json.dumps(outer["Next step"], ensure_ascii=False)
+                    except Exception:
+                        pass
+                print(f"{entity.full_name} decision raw: {candidate} \n")
+                data = json.loads(candidate)
                 self.decision = data
-
                 return
             except json.JSONDecodeError:
-                print("Error load json")
+                print("Error parse decision JSON")
 
         except Exception as e:
             print(f"Error getting decision: {e}")
@@ -137,13 +134,11 @@ class Persona:
         # memory_stream = self.memory.read_last_n_records(memory_file, 2)
         # memory_stream = self.memory.read_last_n_records(memory_file, OBSERVATION_TO_SUMMARY)
 
-        prompt = f"""
-            Context:
-            'history':{progress}
-            'last summary': {summary}
-            
-            Summarize your thought in plan text in short paragraph less than {threshold} words.
-            'Your thought': """
+        prompt = summary_template.format(
+            memory_stream=progress,
+            summary=summary,
+            threshold=threshold,
+        )
 
         print(prompt)
         try:
@@ -152,7 +147,7 @@ class Persona:
             # print(f"{entity.full_name} summary: {response} \n")
 
             # self.memory.write_data(response, "summary", full_name)
-            self.summary = response
+            self.summary = response.strip()
 
             filename = f"summary_{entity.full_name}.json"
             self.save_summary(response, filename, threshold=MEMORY_SIZE)

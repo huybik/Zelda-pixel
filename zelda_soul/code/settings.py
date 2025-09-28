@@ -14,6 +14,7 @@ CONTEXT_LENGTH = 8192
 CHAT_INTERVAL = 24000
 SUMMARY_INTERVAL = 72000
 GPU = -1  # 0 for CPU
+OBSERVATION_WINDOW = 5  # limit number of recent observations sent to model for decision
 
 # event
 OBSERVATION_COOLDOWN = 2000
@@ -149,27 +150,25 @@ monster_data = {
 
 
 prompt_template = """
-            
-            
+
             Guidelines:
-                
-            "action": Choose one from ("attack", "runaway", "heal", "mine"). "attack": Attack a target entity. "runaway": Run away from a target entity. "heal": Heal a target entity which costs energy. "mine": Mine a target resource. 
-            "target_name": Specify target name (entity_name or object_name) from your 'Observation' or "None" if there’s no target.
-            "vigilant": A score from 0 to 100 indicating your current vigilant level.
-            "reason": A 5 words reason.
-            
-            
+            "action": Choose one (attack, runaway, heal, mine). "heal" heals someone else (not self). "mine" only valid if resource target available.
+            "target_name": Must be a name from Observation Targets or "None".
+            "vigilant": Integer 0-100.
+            "reason": <=5 words, no punctuation except spaces.
+
             Context:
+            You are {full_name} and you are {characteristic}. Survive first.
+            Observation: {observation}
+            Memory: {summary}
 
-            You are {full_name}, and you are {characteristic}.
-            Priority to survive using all actions available.
+            OUTPUT RULES:
+            Return ONLY one single-line MINIFIED JSON object (no code fences, no prefix, no explanation):
+            {{"action":"attack","target_name":"player","vigilant":50,"reason":"short reason"}}
+            Do not wrap inside another object or add labels.
+            If unsure choose safest action runaway with target_name "None".
 
-            'Observation': {observation}
-            'Memory': {summary}
-            
-            Using above ontext that contains your current 'Observation' about the world and your 'Memory' (which can be None) to plan your next step. Respond in single JSON with the format of"Next step":{{"action": string,"target_name": string,"vigilant": int,"reason": string}}
-            
-            'Next step':
+            JSON ONLY:
             """
 
 summary_template = """
