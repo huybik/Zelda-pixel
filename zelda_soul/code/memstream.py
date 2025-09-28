@@ -101,7 +101,3 @@ class MemoryStream:
         if not rows:
             return self.read_recent(entity_id, limit)
         return [json.loads(row[0]) for row in reversed(rows)]
-
-    def clear_entity(self, entity_id: str) -> None:
-        with self._connect() as conn:
-            conn.execute("DELETE FROM memories WHERE entity_id = ?", (entity_id,))

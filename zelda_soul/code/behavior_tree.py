@@ -80,28 +80,3 @@ class ActionNode(Node):
     def tick(self, blackboard: dict) -> NodeStatus:
         return self.action(blackboard)
 
-
-class Inverter(Node):
-    """Inverts the result of its child node."""
-
-    def __init__(self, child: SupportsTick):
-        self.child = child
-
-    def tick(self, blackboard: dict) -> NodeStatus:
-        status = self.child.tick(blackboard)
-        if status == NodeStatus.SUCCESS:
-            return NodeStatus.FAILURE
-        if status == NodeStatus.FAILURE:
-            return NodeStatus.SUCCESS
-        return status
-
-
-class Succeeder(Node):
-    """Always returns SUCCESS after ticking its child."""
-
-    def __init__(self, child: SupportsTick):
-        self.child = child
-
-    def tick(self, blackboard: dict) -> NodeStatus:
-        _ = self.child.tick(blackboard)
-        return NodeStatus.SUCCESS

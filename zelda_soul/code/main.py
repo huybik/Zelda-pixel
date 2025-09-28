@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from .debug import debug
 from .level import Level
 from .resources import load_sound
-from .settings import AUDIO_DIR, HEIGHT, WATER_COLOR, WIDTH
+from .settings import AUDIO_DIR, FPS, HEIGHT, WATER_COLOR, WIDTH
 
 
 class Game:
@@ -38,7 +38,7 @@ class Game:
             debug(f"FPS: {fps:.2f}")
 
             pygame.display.update()
-            self.clock.tick(60)
+            self.clock.tick(FPS)
 
         self.level.shutdown()
         pygame.quit()

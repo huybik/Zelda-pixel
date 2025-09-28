@@ -22,12 +22,9 @@ MODEL_PATH = "gemma-3-1b-it-qat-4bit"
 INFERENCE_MODE = "local"
 CONTEXT_LENGTH = 8192
 CHAT_INTERVAL = 24000
-SUMMARY_INTERVAL = 72000
-GPU = -1  # 0 for CPU
 OBSERVATION_WINDOW = 5  # Limit number of observations sent to model
 
 # Event
-OBSERVATION_COOLDOWN = 2000
 SHORT_TERM_MEMORY_LIMIT = 10
 MEMORY_FLUSH_THRESHOLD = 5
 SUMMARY_HISTORY_LIMIT = 5
@@ -113,7 +110,6 @@ monster_data = {
         "attack_type": "slash",
         "attack_sound": str(AUDIO_DIR / "attack" / "slash.wav"),
         "speed": 2,
-        "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
         "characteristic": "player friend",
@@ -126,7 +122,6 @@ monster_data = {
         "attack_type": "claw",
         "attack_sound": str(AUDIO_DIR / "attack" / "claw.wav"),
         "speed": 3,
-        "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
         "characteristic": "aggressive",
@@ -139,7 +134,6 @@ monster_data = {
         "attack_type": "thunder",
         "attack_sound": str(AUDIO_DIR / "attack" / "fireball.wav"),
         "speed": 2,
-        "resistance": 3,
         "act_radius": 200,
         "notice_radius": 600,
         "characteristic": "help player",
@@ -152,7 +146,6 @@ monster_data = {
         "attack_type": "leaf_attack",
         "attack_sound": str(AUDIO_DIR / "attack" / "slash.wav"),
         "speed": 2,
-        "resistance": 3,
         "act_radius": 120,
         "notice_radius": 600,
         "characteristic": "enemy of player",

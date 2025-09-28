@@ -43,7 +43,6 @@ class Entity(pygame.sprite.Sprite):
         self.outside_event: str | None = None
         self.reason: str | None = None
         self.internal_event: str | None = None
-        self.old_internal_event: str | None = None
         self.old_outside_event: str | None = None
         self.observed_event: str | None = None
         self.old_observed_event: str | None = None
@@ -59,8 +58,6 @@ class Entity(pygame.sprite.Sprite):
         self.exp = 0
 
         # observation bookkeeping
-        self.can_save_observation = False
-        self.observation_count = 0
         self.first_observation = False
 
         # sounds (cached)

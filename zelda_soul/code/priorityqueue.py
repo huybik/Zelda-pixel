@@ -21,16 +21,6 @@ class PriorityQueueWithUpdate:
             self.entry_finder[task] = entry
             heapq.heappush(self.heap, entry)
 
-    def has(self, task):
-        """Check if the task exists in the queue."""
-        with self._lock:
-            return task in self.entry_finder and self.entry_finder[task][-1] != self.REMOVED
-
-    def remove_task(self, task):
-        """Mark a task as removed without actually removing it from the heap."""
-        with self._lock:
-            self._remove_task_locked(task)
-
     def _remove_task_locked(self, task):
         entry = self.entry_finder.pop(task, None)
         if entry:
@@ -45,11 +35,6 @@ class PriorityQueueWithUpdate:
                     del self.entry_finder[task]
                     return priority, task
         raise KeyError('pop from an empty priority queue')
-
-    def qsize(self):
-        """Return the number of valid tasks in the queue."""
-        with self._lock:
-            return len(self.entry_finder)
 
     def empty(self):
         """Check if the queue is empty."""

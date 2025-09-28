@@ -96,7 +96,6 @@ class Enemy(Entity):
         self.exp = monster_info["exp"]
         self.speed = monster_info["speed"]
         self.attack_damage = monster_info["damage"]
-        self.resistance = monster_info["resistance"]
         self.act_radius = monster_info["act_radius"]
         self.notice_radius = monster_info["notice_radius"]
         self.attack_type = monster_info["attack_type"]
@@ -357,7 +356,6 @@ class Enemy(Entity):
             target.get_heal(healer=self)
 
     def save_observation(self, player: "Player", entities: list["Enemy"], objects: list["Tile"]):
-        self.observation_count += 1
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         memory_entry = {
             "timestamp": timestamp, "self": self.observation_template(self),

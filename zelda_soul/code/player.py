@@ -100,11 +100,6 @@ class Player(Entity):
         self.speed = self.stats["speed"]
         self.attack_damage = self.get_full_weapon_damage()
 
-        self.knockback = weapon_data[self.weapon][
-            "damage"
-        ]  # just use damage as knockback
-        self.damage = self.get_full_weapon_damage()
-
         # vulnerable
         self.vulnerable = True
         self.vulnerable_time = 0
@@ -113,10 +108,6 @@ class Player(Entity):
         # import sound
         self.weapon_attack_sound = load_sound(AUDIO_DIR / "sword.wav")
         self.weapon_attack_sound.set_volume(0.3)
-        self.player_death_sound = load_sound(AUDIO_DIR / "death.wav")
-
-    def get_variable(self, dict: dict, key):
-        return dict.get(key)
 
     def input(self):
         keys = pygame.key.get_pressed()
@@ -161,9 +152,7 @@ class Player(Entity):
                 self.weapon_index = 0
 
             self.weapon = list(weapon_data.keys())[self.weapon_index]
-            # set knockback
-            self.knockback = weapon_data[self.weapon]["damage"]
-            self.damage = self.get_full_weapon_damage()
+            self.attack_damage = self.get_full_weapon_damage()
 
         # magic
         if keys[pygame.K_LSHIFT] and self.can_act:
@@ -258,7 +247,7 @@ class Player(Entity):
 
     def move(self, target_location, speed):
         if self.direction.magnitude() != 0:
-            if self.direction.magnitude() < 2:  # this to ignore knockback magnitude
+            if self.direction.magnitude() < 2:  # avoid over-scaling tiny directional nudges
                 self.direction = self.direction.normalize()
 
             # detect collision before moving
